@@ -7,6 +7,8 @@ import { EnrichedTweet } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
 import VortexLoader from '@/components/VortexLoader';
 
+export const dynamic = 'force-dynamic';
+
 interface UserInfo {
   id: string;
   username: string;
@@ -32,8 +34,7 @@ function MonitorContent() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  // For user-specific mode: activity type filter
-  // For general mode: sentiment filter
+  // Filter states - both available for user-specific mode
   const [activityFilter, setActivityFilter] = useState<'all' | 'mention' | 'reply' | 'own_post'>('all');
   const [sentimentFilter, setSentimentFilter] = useState<'all' | 'positive' | 'negative' | 'neutral'>('all');
   const [displayCount, setDisplayCount] = useState(10);
@@ -97,23 +98,25 @@ function MonitorContent() {
       setIsLoading(false);
     });
 
-    // General post stream events (when no handle provided)
-    socketInstance.on('post:new', (tweet: EnrichedTweet) => {
-      console.log('📊 [MONITOR] New post:', tweet?.author?.username);
-      if (tweet && tweet.id) {
-        setTweets(prev => [tweet, ...prev].slice(0, 50));
-        setIsLoading(false);
-      }
-    });
+    // General post stream events (ONLY when no handle provided)
+    if (!handle) {
+      socketInstance.on('post:new', (tweet: EnrichedTweet) => {
+        console.log('📊 [MONITOR] New post:', tweet?.author?.username);
+        if (tweet && tweet.id) {
+          setTweets(prev => [tweet, ...prev].slice(0, 50));
+          setIsLoading(false);
+        }
+      });
 
-    socketInstance.on('posts:bulk', (bulkTweets: EnrichedTweet[]) => {
-      console.log('📦 [MONITOR] Bulk posts received:', bulkTweets?.length || 0);
-      if (Array.isArray(bulkTweets) && bulkTweets.length > 0) {
-        const limitedTweets = bulkTweets.slice(0, 50);
-        setTweets([...limitedTweets].reverse());
-        setIsLoading(false);
-      }
-    });
+      socketInstance.on('posts:bulk', (bulkTweets: EnrichedTweet[]) => {
+        console.log('📦 [MONITOR] Bulk posts received:', bulkTweets?.length || 0);
+        if (Array.isArray(bulkTweets) && bulkTweets.length > 0) {
+          const limitedTweets = bulkTweets.slice(0, 50);
+          setTweets([...limitedTweets].reverse());
+          setIsLoading(false);
+        }
+      });
+    }
 
     socketInstance.on('monitor:analysis', (data: { analysis: Analysis, metrics: Record<string, unknown>, timestamp: string }) => {
       console.log('🤖 [MONITOR] AI analysis received');
@@ -152,14 +155,15 @@ function MonitorContent() {
     );
   }
 
-  // Dual filter system based on mode
+  // Enhanced filter system
   const filteredTweets = tweets.filter(tweet => {
     if (handle) {
-      // User-specific mode: filter by activity type
-      if (activityFilter === 'all') return true;
-      return tweet.activityType === activityFilter;
+      // User-specific mode: filter by BOTH activity type AND sentiment
+      const matchesActivity = activityFilter === 'all' || tweet.activityType === activityFilter;
+      const matchesSentiment = sentimentFilter === 'all' || tweet.sentiment === sentimentFilter;
+      return matchesActivity && matchesSentiment;
     } else {
-      // General mode: filter by sentiment
+      // General mode: filter by sentiment only
       if (sentimentFilter === 'all') return true;
       return tweet.sentiment === sentimentFilter;
     }
@@ -172,7 +176,7 @@ function MonitorContent() {
     setDisplayCount(prev => Math.min(prev + 10, filteredTweets.length));
   };
 
-  // Count by activity type (user-specific mode) or sentiment (general mode)
+  // Count by activity type (user-specific mode only)
   const activityCounts = handle ? {
     all: tweets.length,
     mention: tweets.filter(t => t.activityType === 'mention').length,
@@ -180,12 +184,13 @@ function MonitorContent() {
     own_post: tweets.filter(t => t.activityType === 'own_post').length
   } : {};
 
-  const sentimentCounts = !handle ? {
+  // Count by sentiment (both modes)
+  const sentimentCounts = {
     all: tweets.length,
     positive: tweets.filter(t => t.sentiment === 'positive').length,
     negative: tweets.filter(t => t.sentiment === 'negative').length,
     neutral: tweets.filter(t => t.sentiment === 'neutral').length
-  } : {};
+  };
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -368,55 +373,105 @@ function MonitorContent() {
         </div>
       )}
 
-      {/* Filter Tabs - Dual Mode System */}
-      <div className="flex gap-2 mb-6">
-        {handle ? (
-          // User-specific mode: Activity type filters
-          <>
-            <button
-              onClick={() => setActivityFilter('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                activityFilter === 'all'
-                  ? 'bg-pulse-blue text-x-white'
-                  : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
-              }`}
-            >
-              All Activity ({activityCounts.all})
-            </button>
-            <button
-              onClick={() => setActivityFilter('mention')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                activityFilter === 'mention'
-                  ? 'bg-vital-healthy text-x-white'
-                  : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
-              }`}
-            >
-              Mentions ({activityCounts.mention})
-            </button>
-            <button
-              onClick={() => setActivityFilter('reply')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                activityFilter === 'reply'
-                  ? 'bg-vital-neutral text-x-white'
-                  : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
-              }`}
-            >
-              Replies ({activityCounts.reply})
-            </button>
-            <button
-              onClick={() => setActivityFilter('own_post')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                activityFilter === 'own_post'
-                  ? 'bg-pulse-purple text-x-white'
-                  : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
-              }`}
-            >
-              Own Posts ({activityCounts.own_post})
-            </button>
-          </>
-        ) : (
-          // General mode: Sentiment filters
-          <>
+      {/* Filter Tabs - Enhanced System */}
+      {handle ? (
+        // User-specific mode: Activity type filters + Sentiment filters
+        <div className="space-y-3 mb-6">
+          <div>
+            <p className="text-xs text-x-gray-text uppercase tracking-wide mb-2">Activity Type</p>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setActivityFilter('all')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activityFilter === 'all'
+                    ? 'bg-pulse-blue text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                All Activity ({activityCounts.all})
+              </button>
+              <button
+                onClick={() => setActivityFilter('mention')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activityFilter === 'mention'
+                    ? 'bg-vital-healthy text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                Mentions ({activityCounts.mention})
+              </button>
+              <button
+                onClick={() => setActivityFilter('reply')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activityFilter === 'reply'
+                    ? 'bg-vital-neutral text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                Replies ({activityCounts.reply})
+              </button>
+              <button
+                onClick={() => setActivityFilter('own_post')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activityFilter === 'own_post'
+                    ? 'bg-pulse-purple text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                Own Posts ({activityCounts.own_post})
+              </button>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-x-gray-text uppercase tracking-wide mb-2">Sentiment</p>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setSentimentFilter('all')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  sentimentFilter === 'all'
+                    ? 'bg-pulse-blue text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                All Sentiments ({sentimentCounts.all})
+              </button>
+              <button
+                onClick={() => setSentimentFilter('positive')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  sentimentFilter === 'positive'
+                    ? 'bg-vital-healthy text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                Positive ({sentimentCounts.positive})
+              </button>
+              <button
+                onClick={() => setSentimentFilter('neutral')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  sentimentFilter === 'neutral'
+                    ? 'bg-vital-neutral text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                Neutral ({sentimentCounts.neutral})
+              </button>
+              <button
+                onClick={() => setSentimentFilter('negative')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  sentimentFilter === 'negative'
+                    ? 'bg-vital-critical text-x-white'
+                    : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
+                }`}
+              >
+                Negative ({sentimentCounts.negative})
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // General mode: Sentiment filters only
+        <div className="mb-6">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setSentimentFilter('all')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -457,9 +512,9 @@ function MonitorContent() {
             >
               Negative ({sentimentCounts.negative})
             </button>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Activity Stream */}
       <div className="space-y-4">
