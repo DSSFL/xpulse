@@ -128,11 +128,11 @@ async function fetchRealTweets() {
           verified: author.verified || false
         },
         created_at: tweet.created_at,
-        metrics: {
-          likes: tweet.public_metrics?.like_count || 0,
-          retweets: tweet.public_metrics?.retweet_count || 0,
-          replies: tweet.public_metrics?.reply_count || 0,
-          impressions: tweet.public_metrics?.impression_count || 0
+        public_metrics: {
+          like_count: tweet.public_metrics?.like_count || 0,
+          retweet_count: tweet.public_metrics?.retweet_count || 0,
+          reply_count: tweet.public_metrics?.reply_count || 0,
+          impression_count: tweet.public_metrics?.impression_count || 0
         }
       });
 
