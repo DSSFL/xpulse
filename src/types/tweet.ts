@@ -81,6 +81,8 @@ export interface EnrichedPost {
     place_name: string;
     coordinates?: [number, number];
   };
+  activityType?: 'own_post' | 'mention' | 'reply' | 'quote' | 'like';
+  targetUsername?: string;
 }
 
 // Legacy alias for backward compatibility during migration

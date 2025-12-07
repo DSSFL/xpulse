@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { TwitterApi } from 'twitter-api-v2';
 import { AnalyticsEngine } from './analytics.js';
 import { analyzeUserWithGrok } from './grok.js';
+import { UserActivityMonitor } from './userMonitor.js';
 
 dotenv.config();
 
@@ -34,6 +35,9 @@ const analytics = new AnalyticsEngine({
   windowSize: 60000, // 1 minute
   spikeThreshold: 2.0 // 2x baseline = spike
 });
+
+// Initialize user activity monitor
+const userMonitor = new UserActivityMonitor(twitterClient, analytics, io);
 
 // Track processed posts to avoid duplicates
 const processedPostIds = new Set();
@@ -225,59 +229,80 @@ io.on('connection', (socket) => {
   // Handle user analysis requests
   socket.on('analyze:user', async (data) => {
     const { handle } = data;
-    console.log(`🔍 [ANALYSIS] Analyzing user @${handle}...`);
+    console.log(`🔍 [ANALYSIS] Analyzing user @${handle} with ENTERPRISE bulk fetch...`);
 
     try {
-      // Search for mentions of the user
-      // Note: API still uses 'is:retweet' even though UI calls them "reposts"
+      // ENTERPRISE MODE: Fetch up to 500 posts with pagination
+      // This gives comprehensive threat intelligence across large dataset
       const searchQuery = `@${handle} -is:retweet lang:en`;
-      const result = await roClient.v2.search(searchQuery, {
-        max_results: 100,
-        'tweet.fields': ['created_at', 'public_metrics', 'author_id'],
-        'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
-        'expansions': ['author_id']
-      });
-
       const posts = [];
       const userMap = {};
+      let nextToken = null;
+      const MAX_POSTS = 500; // Enterprise tier can handle this
+      const POSTS_PER_REQUEST = 100; // Max per API call
 
-      // Build user map
-      if (result.includes?.users) {
-        result.includes.users.forEach(user => {
-          userMap[user.id] = user;
+      console.log(`📡 [ANALYSIS] Fetching up to ${MAX_POSTS} posts...`);
+
+      // Paginate through results
+      while (posts.length < MAX_POSTS) {
+        const result = await roClient.v2.search(searchQuery, {
+          max_results: POSTS_PER_REQUEST,
+          next_token: nextToken,
+          'tweet.fields': ['created_at', 'public_metrics', 'author_id'],
+          'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
+          'expansions': ['author_id']
         });
+
+        // Build user map
+        if (result.includes?.users) {
+          result.includes.users.forEach(user => {
+            userMap[user.id] = user;
+          });
+        }
+
+        // Process posts from this batch
+        for (const post of result.data?.data || []) {
+          const author = userMap[post.author_id] || { username: 'unknown', name: 'Unknown' };
+
+          const enrichedPost = {
+            id: post.id,
+            text: post.text,
+            created_at: post.created_at,
+            author: {
+              id: author.id,
+              name: author.name,
+              username: author.username,
+              verified: author.verified || false,
+              profile_image_url: author.profile_image_url
+            },
+            public_metrics: {
+              like_count: post.public_metrics?.like_count || 0,
+              repost_count: post.public_metrics?.retweet_count || 0,
+              reply_count: post.public_metrics?.reply_count || 0,
+              quote_count: post.public_metrics?.quote_count || 0,
+              impression_count: post.public_metrics?.impression_count || 0
+            },
+            sentiment: analytics.analyzeSentiment(post.text),
+            engagement: (post.public_metrics?.like_count || 0) + (post.public_metrics?.retweet_count || 0),
+            bot_probability: Math.random() * 0.3, // Simple bot detection
+            language: 'en'
+          };
+
+          posts.push(enrichedPost);
+        }
+
+        // Check for next page
+        nextToken = result.meta?.next_token;
+        if (!nextToken || !result.data?.data || result.data.data.length === 0) {
+          break; // No more results
+        }
+
+        console.log(`📊 [ANALYSIS] Fetched ${posts.length} posts so far...`);
       }
 
-      // Process posts
-      for (const post of result.data?.data || []) {
-        const author = userMap[post.author_id] || { username: 'unknown', name: 'Unknown' };
+      console.log(`✅ [ANALYSIS] Bulk fetch complete: ${posts.length} total posts`);
 
-        const enrichedPost = {
-          id: post.id,
-          text: post.text,
-          created_at: post.created_at,
-          author: {
-            id: author.id,
-            name: author.name,
-            username: author.username,
-            verified: author.verified || false,
-            profile_image_url: author.profile_image_url
-          },
-          public_metrics: {
-            like_count: post.public_metrics?.like_count || 0,
-            repost_count: post.public_metrics?.retweet_count || 0,
-            reply_count: post.public_metrics?.reply_count || 0,
-            quote_count: post.public_metrics?.quote_count || 0,
-            impression_count: post.public_metrics?.impression_count || 0
-          },
-          sentiment: analytics.analyzeSentiment(post.text),
-          engagement: (post.public_metrics?.like_count || 0) + (post.public_metrics?.retweet_count || 0),
-          bot_probability: Math.random() * 0.3, // Simple bot detection
-          language: 'en'
-        };
-
-        posts.push(enrichedPost);
-      }
+      // Process all posts (no slicing, feed everything to AI)
 
       // Calculate metrics
       const totalMentions = posts.length;
@@ -329,9 +354,34 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle user monitoring requests
+  socket.on('monitor:start', async (data) => {
+    const { username } = data;
+    console.log(`🎯 [MONITOR] Client ${socket.id} requesting monitoring for @${username}`);
+
+    try {
+      await userMonitor.startMonitoring(socket.id, username);
+      socket.emit('monitor:started', { username });
+    } catch (error) {
+      console.error(`❌ [MONITOR] Failed to start monitoring:`, error);
+      socket.emit('monitor:error', { message: error.message });
+    }
+  });
+
+  socket.on('monitor:stop', () => {
+    userMonitor.stopMonitoring(socket.id);
+    socket.emit('monitor:stopped');
+  });
+
+  socket.on('monitor:status', () => {
+    const status = userMonitor.getStatus(socket.id);
+    socket.emit('monitor:status-update', status);
+  });
+
   socket.on('disconnect', () => {
     console.log('👋 Client disconnected:', socket.id);
     trackingConfigs.delete(socket.id);
+    userMonitor.stopMonitoring(socket.id);
   });
 });
 

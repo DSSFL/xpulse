@@ -18,35 +18,40 @@ export async function analyzeUserWithGrok(handle, posts, metrics) {
   try {
     console.log(`🤖 [GROK] Analyzing @${handle} with ${posts.length} posts...`);
 
-    // Build context for Grok
-    const postsContext = posts.slice(0, 20).map(post => ({
-      text: post.text,
-      sentiment: post.sentiment,
-      engagement: post.public_metrics?.like_count + post.public_metrics?.repost_count,
-      author: post.author.username,
-      bot_probability: post.bot_probability
-    }));
+    // Prioritize negative/threat posts for analysis (limit to 12 most relevant)
+    const sortedPosts = posts
+      .sort((a, b) => {
+        // Prioritize negative sentiment and high engagement
+        const aScore = (a.sentiment === 'negative' ? 2 : a.sentiment === 'neutral' ? 1 : 0) +
+                      ((a.public_metrics?.like_count || 0) + (a.public_metrics?.repost_count || 0)) / 100;
+        const bScore = (b.sentiment === 'negative' ? 2 : b.sentiment === 'neutral' ? 1 : 0) +
+                      ((b.public_metrics?.like_count || 0) + (b.public_metrics?.repost_count || 0)) / 100;
+        return bScore - aScore;
+      })
+      .slice(0, 12);
 
-    const prompt = `You are an expert threat intelligence analyst for social media. Analyze the following data about X user @${handle}:
+    // Build compact context
+    const postsContext = sortedPosts.map(post =>
+      `[@${post.author.username}] ${post.text} (${post.sentiment}, Likes: ${post.public_metrics?.like_count || 0}, Reposts: ${post.public_metrics?.repost_count || 0})`
+    ).join('\n');
+
+    const prompt = `Analyze threat landscape for @${handle} on X:
 
 METRICS:
-- Total mentions in last hour: ${metrics.totalMentions}
-- Sentiment breakdown: ${metrics.sentimentBreakdown.positive}% positive, ${metrics.sentimentBreakdown.neutral}% neutral, ${metrics.sentimentBreakdown.negative}% negative
-- Bot activity: ${metrics.botActivityPercentage}%
-- Average engagement rate: ${metrics.engagementRate}%
+Mentions: ${metrics.totalMentions} | Sentiment: ${metrics.sentimentBreakdown.positive}% pos, ${metrics.sentimentBreakdown.neutral}% neutral, ${metrics.sentimentBreakdown.negative}% neg
+Bot activity: ${metrics.botActivityPercentage}% | Engagement: ${metrics.engagementRate}%
 
-RECENT POSTS MENTIONING @${handle}:
-${postsContext.map((p, i) => `${i + 1}. [@${p.author}] ${p.text} (${p.sentiment}, ${p.engagement} engagement, ${Math.round(p.bot_probability * 100)}% bot)`).join('\n')}
+RECENT MENTIONS (sorted by relevance):
+${postsContext}
 
-Provide a comprehensive threat intelligence analysis including:
-1. Overall threat level (low/medium/high/critical) and why
-2. Top 3 specific threats or risks (with severity percentages)
-3. Key narrative themes and coordination indicators
-4. Sentiment analysis and potential PR risks
-5. Bot/inauthentic activity assessment
-6. 3-5 actionable recommendations for the user
+Provide a CONCISE threat-focused analysis (3-4 short paragraphs max):
 
-Be concise but thorough. Focus on actionable insights.`;
+1. Overall threat level and primary concerns
+2. Specific threats, risks, or negative narratives to monitor
+3. Bot/coordination patterns if any
+4. Key recommendations
+
+Keep it brief and actionable. Use plain text only - NO markdown, NO asterisks, NO emojis, NO bullet points. Write in clear prose paragraphs.`;
 
     const response = await fetch(GROK_API_URL, {
       method: 'POST',
@@ -58,7 +63,7 @@ Be concise but thorough. Focus on actionable insights.`;
         messages: [
           {
             role: 'system',
-            content: 'You are an elite threat intelligence analyst specializing in social media narrative analysis, bot detection, and crisis prediction. Provide clear, actionable insights.'
+            content: 'You are a threat intelligence analyst. Write concise, plain text analysis in 3-4 short paragraphs focused on threats and risks. No markdown, no asterisks, no emojis, no bullet points - just clear prose.'
           },
           {
             role: 'user',
@@ -148,6 +153,105 @@ function parseGrokAnalysis(analysis, metrics) {
       'Prepare response strategy for potential crisis scenarios'
     ]
   };
+}
+
+/**
+ * Analyze user activity monitoring data with Grok AI
+ */
+export async function analyzeUserActivityWithGrok(username, metrics, activities = []) {
+  const GROK_API_KEY = process.env.GROK_API_KEY || '';
+
+  if (!GROK_API_KEY) {
+    throw new Error('GROK_API_KEY is not set in environment variables');
+  }
+
+  try {
+    console.log(`🤖 [GROK] Analyzing activity for @${username} with ${activities.length} posts...`);
+
+    // Build activity context for deeper analysis (limit to 15 most recent)
+    const activityContext = activities.slice(0, 15).map(activity => {
+      const type = activity.activityType === 'own_post' ? 'Posted' :
+                   activity.activityType === 'mention' ? 'Mentioned in' :
+                   activity.activityType === 'reply' ? 'Reply to' : 'Activity';
+      return `[${type}] "${activity.text}" (Likes: ${activity.public_metrics.like_count}, Reposts: ${activity.public_metrics.repost_count}, Replies: ${activity.public_metrics.reply_count}) - ${activity.sentiment}`;
+    }).join('\n');
+
+    // Analyze activity types distribution
+    const activityBreakdown = activities.reduce((acc, a) => {
+      acc[a.activityType] = (acc[a.activityType] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Calculate average engagement
+    const avgEngagement = activities.length > 0
+      ? Math.round(activities.reduce((sum, a) => sum + a.engagement, 0) / activities.length)
+      : 0;
+
+    const prompt = `Analyze @${username} on X based on this data:
+
+USER: ${metrics.user.name} (@${metrics.user.username})
+Verified: ${metrics.user.verified ? 'Yes' : 'No'} | Followers: ${metrics.user.public_metrics?.followers_count?.toLocaleString() || 0}
+
+ACTIVITY (Last ${activities.length} events in ${metrics.monitoringDuration} min):
+Own Posts: ${activityBreakdown.own_post || 0} | Mentions: ${activityBreakdown.mention || 0} | Replies: ${activityBreakdown.reply || 0}
+Avg Engagement: ${avgEngagement}
+
+RECENT POSTS/ACTIVITY:
+${activityContext || 'No recent activity'}
+
+Provide a CONCISE analysis (3-4 short paragraphs max) covering:
+
+1. Main topics and interests based on their actual posts
+2. Posting style (original content vs replies/mentions) and engagement patterns
+3. Sentiment and tone of conversations
+4. Key insights and what to monitor
+
+Keep it brief and actionable. Use plain text only - NO markdown formatting, NO asterisks, NO emojis, NO bullet points. Write in clear prose paragraphs.`;
+
+
+    const response = await fetch(GROK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROK_API_KEY}`
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a social media analyst. Write concise, plain text analysis in 3-4 short paragraphs. No markdown, no asterisks, no emojis, no bullet points - just clear prose.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        model: 'grok-3',
+        stream: false,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('❌ [GROK] API Error:', error);
+      throw new Error(`Grok API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const analysis = data.choices[0].message.content;
+
+    console.log('✅ [GROK] Enhanced activity analysis complete');
+
+    return {
+      summary: analysis,
+      timestamp: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('❌ [GROK] Activity analysis failed:', error);
+    throw error;
+  }
 }
 
 /**
