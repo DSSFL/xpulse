@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { io } from 'socket.io-client';
 import { EnrichedPost } from '@/types/tweet';
 import VitalCard from '@/components/VitalCard';
@@ -33,8 +34,11 @@ interface PersonalAnalysis {
   };
 }
 
-export default function AnalyzePage() {
-  const [handle, setHandle] = useState('');
+function AnalyzeContent() {
+  const searchParams = useSearchParams();
+  const urlHandle = searchParams.get('handle');
+
+  const [handle, setHandle] = useState(urlHandle || '');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<PersonalAnalysis | null>(null);
   const [error, setError] = useState('');
@@ -95,6 +99,14 @@ export default function AnalyzePage() {
       setIsAnalyzing(false);
     }
   };
+
+  // Auto-trigger analysis if handle is in URL
+  useEffect(() => {
+    if (urlHandle && !analysis && !isAnalyzing) {
+      console.log('🚀 Auto-triggering analysis for:', urlHandle);
+      analyzeHandle();
+    }
+  }, [urlHandle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getThreatColor = (level: string) => {
     switch (level) {
@@ -326,5 +338,13 @@ export default function AnalyzePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AnalyzePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><VortexLoader message="Loading analysis..." /></div>}>
+      <AnalyzeContent />
+    </Suspense>
   );
 }

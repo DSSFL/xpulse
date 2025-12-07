@@ -40,6 +40,12 @@ function VitalsContent() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => window.location.href = `/analyze?handle=${handle}`}
+              className="text-xs px-3 py-1 rounded-full bg-white text-pulse-purple hover:bg-white/90 transition-colors font-semibold"
+            >
+              🔍 Analyze Threats
+            </button>
+            <button
               onClick={() => window.location.href = `/monitor?handle=${handle}`}
               className="text-xs px-3 py-1 rounded-full bg-white text-pulse-purple hover:bg-white/90 transition-colors font-semibold"
             >
