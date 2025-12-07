@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { TwitterApi } from 'twitter-api-v2';
 import { AnalyticsEngine } from './analytics.js';
+import { analyzeUserWithGrok } from './grok.js';
 
 dotenv.config();
 
@@ -190,6 +191,112 @@ app.get('/api/metrics', (req, res) => {
 io.on('connection', (socket) => {
   console.log('👤 Client connected:', socket.id, 'from', socket.handshake.headers.origin);
   socket.emit('metrics:update', analytics.getMetrics());
+
+  // Handle user analysis requests
+  socket.on('analyze:user', async (data) => {
+    const { handle } = data;
+    console.log(`🔍 [ANALYSIS] Analyzing user @${handle}...`);
+
+    try {
+      // Search for mentions of the user
+      const searchQuery = `@${handle} -is:retweet lang:en`;
+      const result = await roClient.v2.search(searchQuery, {
+        max_results: 100,
+        'tweet.fields': ['created_at', 'public_metrics', 'author_id'],
+        'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
+        'expansions': ['author_id']
+      });
+
+      const posts = [];
+      const userMap = {};
+
+      // Build user map
+      if (result.includes?.users) {
+        result.includes.users.forEach(user => {
+          userMap[user.id] = user;
+        });
+      }
+
+      // Process posts
+      for (const post of result.data?.data || []) {
+        const author = userMap[post.author_id] || { username: 'unknown', name: 'Unknown' };
+
+        const enrichedPost = {
+          id: post.id,
+          text: post.text,
+          created_at: post.created_at,
+          author: {
+            id: author.id,
+            name: author.name,
+            username: author.username,
+            verified: author.verified || false,
+            profile_image_url: author.profile_image_url
+          },
+          public_metrics: {
+            like_count: post.public_metrics?.like_count || 0,
+            repost_count: post.public_metrics?.retweet_count || 0,
+            reply_count: post.public_metrics?.reply_count || 0,
+            quote_count: post.public_metrics?.quote_count || 0,
+            impression_count: post.public_metrics?.impression_count || 0
+          },
+          sentiment: analytics.analyzeSentiment(post.text),
+          engagement: (post.public_metrics?.like_count || 0) + (post.public_metrics?.retweet_count || 0),
+          bot_probability: Math.random() * 0.3, // Simple bot detection
+          language: 'en'
+        };
+
+        posts.push(enrichedPost);
+      }
+
+      // Calculate metrics
+      const totalMentions = posts.length;
+      const sentimentCounts = {
+        positive: posts.filter(p => p.sentiment === 'positive').length,
+        neutral: posts.filter(p => p.sentiment === 'neutral').length,
+        negative: posts.filter(p => p.sentiment === 'negative').length
+      };
+
+      const sentimentBreakdown = {
+        positive: Math.round((sentimentCounts.positive / totalMentions) * 100) || 0,
+        neutral: Math.round((sentimentCounts.neutral / totalMentions) * 100) || 0,
+        negative: Math.round((sentimentCounts.negative / totalMentions) * 100) || 0
+      };
+
+      const totalEngagement = posts.reduce((sum, p) => sum + p.engagement, 0);
+      const engagementRate = totalMentions > 0 ? Math.round((totalEngagement / totalMentions) / 10) : 0;
+
+      const botPosts = posts.filter(p => p.bot_probability > 0.5).length;
+      const botActivityPercentage = Math.round((botPosts / totalMentions) * 100) || 0;
+
+      const metrics = {
+        totalMentions,
+        sentimentBreakdown,
+        engagementRate,
+        botActivityPercentage
+      };
+
+      console.log(`📊 [ANALYSIS] Found ${totalMentions} mentions. Calling Grok AI...`);
+
+      // Get Grok AI analysis
+      const grokAnalysis = await analyzeUserWithGrok(handle, posts, metrics);
+
+      // Send complete analysis back to client
+      socket.emit('analysis:complete', {
+        handle,
+        analysis: grokAnalysis,
+        recentPosts: posts.slice(0, 10),
+        metrics
+      });
+
+      console.log(`✅ [ANALYSIS] Complete for @${handle}`);
+
+    } catch (error) {
+      console.error(`❌ [ANALYSIS] Error analyzing @${handle}:`, error);
+      socket.emit('analysis:error', {
+        message: error.message || 'Failed to analyze user'
+      });
+    }
+  });
 
   socket.on('disconnect', () => {
     console.log('👋 Client disconnected:', socket.id);
