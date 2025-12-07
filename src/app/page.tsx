@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import VortexLoader from '@/components/VortexLoader';
@@ -11,6 +11,19 @@ export default function Home() {
   const [topics, setTopics] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState('');
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // Check if user already logged in - redirect to vitals if so
+  useEffect(() => {
+    const savedHandle = localStorage.getItem('xpulse_handle');
+    const savedTopics = localStorage.getItem('xpulse_topics');
+
+    if (savedHandle && savedTopics) {
+      router.push('/vitals?handle=' + encodeURIComponent(savedHandle) + '&topics=' + encodeURIComponent(savedTopics));
+    } else {
+      setCheckingSession(false);
+    }
+  }, [router]);
 
   const startTracking = async () => {
     if (!handle.trim() || !topics.trim()) {
@@ -36,9 +49,12 @@ export default function Home() {
         topics: topics.split(',').map(t => t.trim())
       });
 
-      // After 5 seconds, navigate to vitals dashboard
+      // After 5 seconds, save to localStorage and navigate to vitals dashboard
       setTimeout(() => {
         socketInstance.disconnect();
+        // Save login info to localStorage so user doesn't see login again
+        localStorage.setItem('xpulse_handle', handle.replace('@', ''));
+        localStorage.setItem('xpulse_topics', topics);
         router.push('/vitals?handle=' + encodeURIComponent(handle.replace('@', '')) + '&topics=' + encodeURIComponent(topics));
       }, 5000);
 
@@ -56,19 +72,23 @@ export default function Home() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-pulse-purple/20 rounded-full blur-3xl animate-pulse pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pulse-blue/20 rounded-full blur-3xl animate-pulse delay-700 pointer-events-none" />
 
-      {isLoading ? (
+      {checkingSession ? (
+        <div className="flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-pulse-purple border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : isLoading ? (
         <VortexLoader message={progress} />
       ) : (
         <div className="max-w-2xl w-full z-10">
           {/* Hero Section */}
           <div className="text-center mb-12">
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pulse-purple to-pulse-blue flex items-center justify-center shadow-lg shadow-pulse-purple/50">
-                <span className="text-white font-bold text-3xl">X</span>
-              </div>
-              <h1 className="text-5xl font-bold text-x-white">
-                Pulse
-              </h1>
+            <div className="flex items-center justify-center mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/xpulse-logo.png"
+                alt="XPulse"
+                className="h-16 w-auto"
+              />
             </div>
 
             <h2 className="text-3xl font-bold text-x-white mb-4">
