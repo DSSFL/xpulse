@@ -3,51 +3,75 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { TwitterApi } from 'twitter-api-v2';
-import pg from 'pg';
 
-dotenv.config({ path: '../.env.local' });
+dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.NODE_ENV === 'production'
-      ? 'https://xpulse.buzz'
-      : 'http://localhost:3000',
-    methods: ['GET', 'POST']
+    origin: ['https://xpulse.buzz', 'https://www.xpulse.buzz', 'http://localhost:3000'],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: ['https://xpulse.buzz', 'https://www.xpulse.buzz', 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json());
-
-// Database connection
-const { Pool } = pg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// X API Client - Using Bearer Token for streaming access
-const twitterClient = new TwitterApi(process.env.TWITTER_BEARER_TOKEN);
 
 // Metrics tracking
 let metrics = {
   tweetsPerMinute: 0,
   totalTweets: 0,
   sentiment: { positive: 0, neutral: 0, negative: 0 },
-  topTopics: [],
   velocity: 0,
   lastMinuteTweets: []
 };
 
-// Calculate velocity every minute
+// Simulate tweet stream
+function simulateTweetStream() {
+  console.log('📊 Starting simulated tweet stream...');
+  
+  const sampleTweets = [
+    { text: 'Breaking news: Amazing AI breakthrough announced!', sentiment: 'positive' },
+    { text: 'This is terrible news for the tech industry', sentiment: 'negative' },
+    { text: 'Just another day in crypto markets', sentiment: 'neutral' },
+    { text: 'Love this new feature! Awesome work!', sentiment: 'positive' },
+    { text: 'Tech stocks showing great performance today', sentiment: 'positive' },
+    { text: 'New regulations causing concern', sentiment: 'negative' },
+    { text: 'Market update: steady trading continues', sentiment: 'neutral' },
+    { text: 'Incredible innovation in renewable energy!', sentiment: 'positive' },
+  ];
+
+  setInterval(() => {
+    const tweet = sampleTweets[Math.floor(Math.random() * sampleTweets.length)];
+    
+    metrics.totalTweets++;
+    metrics.lastMinuteTweets.push(Date.now());
+    
+    // Update sentiment
+    if (tweet.sentiment === 'positive') metrics.sentiment.positive++;
+    else if (tweet.sentiment === 'negative') metrics.sentiment.negative++;
+    else metrics.sentiment.neutral++;
+    
+    // Broadcast to clients
+    io.emit('tweet:new', {
+      id: Date.now().toString(),
+      text: tweet.text,
+      author: `user${Math.floor(Math.random() * 1000)}`,
+      created_at: new Date().toISOString()
+    });
+  }, 2000); // New tweet every 2 seconds
+}
+
+// Calculate velocity every second
 setInterval(() => {
   const now = Date.now();
   const oneMinuteAgo = now - 60000;
 
-  // Filter tweets from last minute
   metrics.lastMinuteTweets = metrics.lastMinuteTweets.filter(
     timestamp => timestamp > oneMinuteAgo
   );
@@ -57,113 +81,26 @@ setInterval(() => {
 
   // Broadcast updated metrics
   io.emit('metrics:update', metrics);
-}, 1000); // Update every second for smooth UI
-
-// X Streaming API connection
-async function startTwitterStream() {
-  try {
-    console.log('🔌 Connecting to X Streaming API...');
-
-    // Check if stream rules exist
-    const rules = await twitterClient.v2.streamRules();
-
-    // Only add rules if none exist
-    if (!rules.data || rules.data.length === 0) {
-      console.log('📝 No rules found, adding new rules...');
-      await twitterClient.v2.updateStreamRules({
-        add: [
-          { value: 'breaking news lang:en', tag: 'breaking-news' },
-          { value: '#tech OR #AI OR #crypto', tag: 'tech' },
-          { value: 'is:verified has:media', tag: 'verified-media' }
-        ]
-      });
-      console.log('✅ Rules added successfully!');
-    } else {
-      console.log(`✅ Found ${rules.data.length} existing rule(s), using them.`);
-    }
-
-    // Start streaming
-    const stream = await twitterClient.v2.searchStream({
-      'tweet.fields': ['created_at', 'public_metrics', 'author_id'],
-      'user.fields': ['username', 'verified'],
-      expansions: ['author_id']
-    });
-
-    console.log('✅ X Stream connected!');
-
-    stream.on('data', async (tweet) => {
-      try {
-        metrics.totalTweets++;
-        metrics.lastMinuteTweets.push(Date.now());
-
-        // Simple sentiment analysis (basic)
-        const text = tweet.data.text.toLowerCase();
-        if (text.match(/great|amazing|love|awesome|excellent/)) {
-          metrics.sentiment.positive++;
-        } else if (text.match(/bad|terrible|hate|awful|worst/)) {
-          metrics.sentiment.negative++;
-        } else {
-          metrics.sentiment.neutral++;
-        }
-
-        // Broadcast tweet to connected clients
-        io.emit('tweet:new', {
-          id: tweet.data.id,
-          text: tweet.data.text,
-          author: tweet.includes?.users?.[0]?.username || 'unknown',
-          created_at: tweet.data.created_at,
-          metrics: tweet.data.public_metrics
-        });
-
-      } catch (error) {
-        console.error('Error processing tweet:', error);
-      }
-    });
-
-    stream.on('error', (error) => {
-      console.error('Stream error:', error);
-      setTimeout(startTwitterStream, 5000); // Reconnect after 5s
-    });
-
-  } catch (error) {
-    console.error('Failed to start Twitter stream:', error);
-    setTimeout(startTwitterStream, 10000); // Retry after 10s
-  }
-}
+}, 1000);
 
 // API Routes
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
+  res.json({ 
+    status: 'ok', 
+    uptime: process.uptime(),
+    mode: 'simulation',
+    message: 'Backend running with simulated data',
+    totalTweets: metrics.totalTweets
+  });
 });
 
 app.get('/api/metrics', (req, res) => {
   res.json(metrics);
 });
 
-app.get('/api/stream/rules', async (req, res) => {
-  try {
-    const rules = await twitterClient.v2.streamRules();
-    res.json(rules);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/stream/rules', async (req, res) => {
-  try {
-    const { add } = req.body;
-    await twitterClient.v2.updateStreamRules({ add });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // WebSocket connection handling
 io.on('connection', (socket) => {
-  console.log('👤 Client connected:', socket.id);
-
-  // Send current metrics immediately
+  console.log('👤 Client connected:', socket.id, 'from', socket.handshake.headers.origin);
   socket.emit('metrics:update', metrics);
 
   socket.on('disconnect', () => {
@@ -173,7 +110,9 @@ io.on('connection', (socket) => {
 
 // Start server
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 X Pulse Backend running on port ${PORT}`);
-  startTwitterStream();
+  console.log(`⚠️  Running in SIMULATION mode`);
+  console.log(`✅ CORS enabled for: xpulse.buzz, www.xpulse.buzz`);
+  simulateTweetStream();
 });
