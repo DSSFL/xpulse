@@ -16,6 +16,15 @@ interface Metrics {
     negative: number;
   };
   velocity: number;
+  // Enhanced threat vitals from backend
+  viralityRisk?: number;
+  authenticityScore?: number;
+  narrativeCoherence?: string;
+  responseWindow?: number;
+  engagementRate?: number;
+  coordinatedActivity?: number;
+  topHashtags?: Array<{ tag: string; count: number }>;
+  topKeywords?: Array<{ word: string; count: number }>;
 }
 
 interface Tweet {
@@ -98,17 +107,21 @@ export default function LiveDashboard() {
     ? ((metrics.sentiment.positive - metrics.sentiment.negative) / totalSentiment) * 100
     : 0;
 
-  // Calculate authenticity score from real data
-  const authenticityScore = totalSentiment > 0
+  // Use enriched metrics from backend or fallbacks
+  const viralityRisk = metrics.viralityRisk ?? Math.min(Math.floor(metrics.velocity / 3), 100);
+  const authenticityScore = metrics.authenticityScore ?? (totalSentiment > 0
     ? Math.min(100, Math.round((metrics.sentiment.neutral / totalSentiment) * 100))
-    : 0;
+    : 0);
+  const narrativeCoherence = metrics.narrativeCoherence ?? (metrics.velocity > 150 ? "high" : metrics.velocity > 50 ? "medium" : "low");
+  const responseWindow = metrics.responseWindow ?? Math.max(1, Math.floor(6 - metrics.velocity / 50));
 
-  // Calculate origin percentages from real velocity patterns
+  // Calculate origin percentages - use coordinatedActivity from backend
+  const coordinatedPct = metrics.coordinatedActivity ?? 0;
   const originData = {
-    organic: metrics.velocity > 0 ? Math.min(100, Math.round(50 + (metrics.velocity / 10))) : 0,
-    media: metrics.velocity > 0 ? Math.round(20 + (metrics.velocity / 20)) : 0,
-    influencer: metrics.velocity > 0 ? Math.round(10 + (metrics.velocity / 30)) : 0,
-    coordinated: metrics.velocity > 0 ? Math.max(0, Math.round(20 - (metrics.velocity / 10))) : 0
+    organic: Math.max(0, 70 - coordinatedPct),
+    media: Math.min(20, Math.round(metrics.engagementRate ?? 20 / 4)),
+    influencer: Math.min(15, Math.round((metrics.viralityRisk ?? 0) / 5)),
+    coordinated: coordinatedPct
   };
 
   return (
@@ -162,7 +175,7 @@ export default function LiveDashboard() {
               <p className="text-x-gray-text text-sm">emerging risks</p>
             </div>
             <div>
-              <p className="text-vital-neutral text-2xl font-bold">~{Math.max(1, Math.floor(6 - metrics.velocity / 50))}h</p>
+              <p className="text-vital-neutral text-2xl font-bold">~{responseWindow.toFixed(1)}h</p>
               <p className="text-x-gray-text text-sm">avg response window</p>
             </div>
           </div>
@@ -208,10 +221,10 @@ export default function LiveDashboard() {
 
           <VitalCard
             title="Virality Risk"
-            value={Math.min(Math.floor(metrics.velocity / 3) || 34, 100).toString()}
+            value={viralityRisk.toString()}
             unit="/ 100"
-            status={metrics.velocity > 150 ? "critical" : metrics.velocity > 100 ? "warning" : "neutral"}
-            trend={metrics.velocity > 100 ? "up" : "stable"}
+            status={viralityRisk > 75 ? "critical" : viralityRisk > 50 ? "warning" : "neutral"}
+            trend={viralityRisk > 60 ? "up" : "stable"}
             subtitle="Likelihood of mainstream pickup"
             icon={
               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -237,10 +250,10 @@ export default function LiveDashboard() {
 
           <VitalCard
             title="Narrative Coherence"
-            value={metrics.velocity > 150 ? "High" : metrics.velocity > 50 ? "Medium" : "Low"}
+            value={narrativeCoherence.charAt(0).toUpperCase() + narrativeCoherence.slice(1)}
             unit=""
-            status={metrics.velocity > 150 ? "critical" : metrics.velocity > 50 ? "warning" : "healthy"}
-            trend={metrics.velocity > 100 ? "up" : "stable"}
+            status={narrativeCoherence === "high" ? "critical" : narrativeCoherence === "medium" ? "warning" : "healthy"}
+            trend={narrativeCoherence === "high" ? "up" : "stable"}
             subtitle="Unified story forming?"
             icon={
               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -251,10 +264,10 @@ export default function LiveDashboard() {
 
           <VitalCard
             title="Response Window"
-            value={`~${Math.max(1, Math.floor(6 - metrics.velocity / 50))}h`}
+            value={`~${responseWindow.toFixed(1)}h`}
             unit="remaining"
-            status={metrics.velocity > 200 ? "critical" : metrics.velocity > 100 ? "warning" : "neutral"}
-            trend={metrics.velocity > 100 ? "down" : "stable"}
+            status={responseWindow < 2 ? "critical" : responseWindow < 4 ? "warning" : "neutral"}
+            trend={responseWindow < 3 ? "down" : "stable"}
             subtitle="Time before mainstream media pickup"
             icon={
               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
