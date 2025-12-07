@@ -38,8 +38,11 @@ export default function LiveDashboard() {
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--');
 
   useEffect(() => {
-    // Connect to backend WebSocket
-    const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    // Connect to backend WebSocket - Production URL
+    const backendUrl = process.env.NODE_ENV === 'production'
+      ? 'https://api.xpulse.buzz'
+      : (process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001');
+
     console.log('🔌 Connecting to backend:', backendUrl);
     const socketInstance = io(backendUrl);
 
