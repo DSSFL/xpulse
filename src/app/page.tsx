@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import VitalCard from '@/components/VitalCard';
 import TopicCard from '@/components/TopicCard';
 import EKGLine from '@/components/EKGLine';
@@ -287,4 +288,10 @@ export default function Home() {
       </footer>
     </div>
   );
+=======
+import LiveDashboard from '@/components/LiveDashboard';
+
+export default function Home() {
+  return <LiveDashboard />;
+>>>>>>> 56c7785b97e14bb60be7bc454014c5252cd58863
 }
