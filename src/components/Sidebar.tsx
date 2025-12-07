@@ -90,11 +90,6 @@ export default function Sidebar() {
                 >
                   <span className="relative text-[#E7E9EA]">
                     {item.icon}
-                    {item.badge && (
-                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#1D9BF0] text-[11px] font-bold rounded-full flex items-center justify-center text-white px-1">
-                        {item.badge}
-                      </span>
-                    )}
                   </span>
                   <span className={`hidden xl:block text-xl text-[#E7E9EA] ${isActive ? 'font-bold' : ''}`}>
                     {item.name}
@@ -177,11 +172,6 @@ export default function Sidebar() {
             >
               <span className="relative">
                 {item.icon}
-                {item.badge && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#1D9BF0] text-[11px] font-bold rounded-full flex items-center justify-center text-white px-1">
-                    {item.badge}
-                  </span>
-                )}
               </span>
               <span className="text-[10px] font-medium">{item.name}</span>
             </Link>
