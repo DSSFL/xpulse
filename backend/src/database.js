@@ -133,7 +133,7 @@ class Database {
       await client.query(`
         CREATE TABLE IF NOT EXISTS backfill_jobs (
           id SERIAL PRIMARY KEY,
-          tracked_user_id INTEGER REFERENCES tracked_users(id) ON DELETE CASCADE,
+          tracked_user_id INTEGER REFERENCES tracked_users(id) ON DELETE CASCADE UNIQUE,
           status VARCHAR(50) DEFAULT 'pending',
           started_at TIMESTAMP WITH TIME ZONE,
           completed_at TIMESTAMP WITH TIME ZONE,
@@ -378,13 +378,29 @@ class Database {
   async startBackfillJob(trackedUserId) {
     const client = await this.pool.connect();
     try {
-      const result = await client.query(`
-        INSERT INTO backfill_jobs (tracked_user_id, status, started_at)
-        VALUES ($1, 'in_progress', NOW())
-        ON CONFLICT (tracked_user_id)
-        DO UPDATE SET status = 'in_progress', started_at = NOW(), error_message = NULL
-        RETURNING *;
-      `, [trackedUserId]);
+      // Check if job exists
+      const existing = await client.query(
+        'SELECT * FROM backfill_jobs WHERE tracked_user_id = $1',
+        [trackedUserId]
+      );
+
+      let result;
+      if (existing.rows.length > 0) {
+        // Update existing job
+        result = await client.query(`
+          UPDATE backfill_jobs
+          SET status = 'in_progress', started_at = NOW(), error_message = NULL
+          WHERE tracked_user_id = $1
+          RETURNING *;
+        `, [trackedUserId]);
+      } else {
+        // Insert new job
+        result = await client.query(`
+          INSERT INTO backfill_jobs (tracked_user_id, status, started_at)
+          VALUES ($1, 'in_progress', NOW())
+          RETURNING *;
+        `, [trackedUserId]);
+      }
 
       return result.rows[0];
     } catch (error) {
