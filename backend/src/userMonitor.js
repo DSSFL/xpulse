@@ -1,4 +1,5 @@
 import { analyzeUserActivityWithGrok } from './grok.js';
+import { xApiErrorHandler } from './xApiErrorHandler.js';
 
 /**
  * Helper function to upgrade profile image URL to higher resolution
@@ -31,10 +32,14 @@ export class UserActivityMonitor {
     try {
       console.log(`🎯 [USER MONITOR] Starting monitoring for @${username} (socket: ${socketId})`);
 
-      // Get user ID from username
-      const user = await this.client.v2.userByUsername(username, {
-        'user.fields': ['id', 'name', 'username', 'verified', 'profile_image_url', 'public_metrics', 'description']
-      });
+      // Get user ID from username with error handling
+      const user = await xApiErrorHandler.executeWithRetry(
+        `userByUsername-${username}`,
+        () => this.client.v2.userByUsername(username, {
+          'user.fields': ['id', 'name', 'username', 'verified', 'profile_image_url', 'public_metrics', 'description']
+        }),
+        { maxRetries: 3, baseDelay: 2000 }
+      );
 
       if (!user.data) {
         throw new Error(`User @${username} not found`);
@@ -107,13 +112,17 @@ export class UserActivityMonitor {
 
       // 1. Get user's own recent posts
       try {
-        const userTweets = await this.client.v2.userTimeline(userId, {
-          max_results: 10,
-          'tweet.fields': ['created_at', 'public_metrics', 'referenced_tweets', 'entities', 'geo'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
-          expansions: ['geo.place_id'],
-          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
-        });
+        const userTweets = await xApiErrorHandler.executeWithRetry(
+          `userTimeline-${userId}`,
+          () => this.client.v2.userTimeline(userId, {
+            max_results: 10,
+            'tweet.fields': ['created_at', 'public_metrics', 'referenced_tweets', 'entities', 'geo'],
+            'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+            expansions: ['geo.place_id'],
+            'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
+          }),
+          { maxRetries: 3, baseDelay: 2000 }
+        );
 
         if (userTweets.data?.data) {
           for (const tweet of userTweets.data.data) {
@@ -129,13 +138,17 @@ export class UserActivityMonitor {
 
       // 2. Get mentions of the user
       try {
-        const mentions = await this.client.v2.search(`@${username} -from:${username} -is:retweet lang:en`, {
-          max_results: 20,
-          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets', 'geo'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
-          expansions: ['author_id', 'geo.place_id'],
-          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
-        });
+        const mentions = await xApiErrorHandler.executeWithRetry(
+          `search-mentions-${username}`,
+          () => this.client.v2.search(`@${username} -from:${username} -is:retweet lang:en`, {
+            max_results: 20,
+            'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets', 'geo'],
+            'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+            expansions: ['author_id', 'geo.place_id'],
+            'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
+          }),
+          { maxRetries: 3, baseDelay: 2000 }
+        );
 
         if (mentions.data?.data) {
           for (const tweet of mentions.data.data) {
@@ -151,13 +164,17 @@ export class UserActivityMonitor {
 
       // 3. Get replies to the user's posts (search for "to:username")
       try {
-        const replies = await this.client.v2.search(`to:${username} -from:${username} -is:retweet lang:en`, {
-          max_results: 20,
-          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets', 'geo'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
-          expansions: ['author_id', 'geo.place_id'],
-          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
-        });
+        const replies = await xApiErrorHandler.executeWithRetry(
+          `search-replies-${username}`,
+          () => this.client.v2.search(`to:${username} -from:${username} -is:retweet lang:en`, {
+            max_results: 20,
+            'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets', 'geo'],
+            'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+            expansions: ['author_id', 'geo.place_id'],
+            'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
+          }),
+          { maxRetries: 3, baseDelay: 2000 }
+        );
 
         if (replies.data?.data) {
           for (const tweet of replies.data.data) {

@@ -222,6 +222,34 @@ app.get('/health', (req, res) => {
   });
 });
 
+// X API health status - circuit breaker and rate limit tracking
+app.get('/health/api-status', (req, res) => {
+  const apiStatus = xApiErrorHandler.getHealthStatus();
+
+  // Calculate overall health
+  const endpoints = Object.keys(apiStatus);
+  const openCircuits = endpoints.filter(ep => apiStatus[ep].circuitBreaker.state === 'OPEN');
+  const degradedEndpoints = endpoints.filter(ep => {
+    const status = apiStatus[ep];
+    return status.consecutiveErrors >= 3 || status.circuitBreaker.state === 'HALF_OPEN';
+  });
+
+  const overallStatus = openCircuits.length > 0 ? 'degraded' :
+                       degradedEndpoints.length > 0 ? 'warning' : 'healthy';
+
+  res.json({
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    endpoints: apiStatus,
+    summary: {
+      totalEndpoints: endpoints.length,
+      healthyEndpoints: endpoints.length - openCircuits.length - degradedEndpoints.length,
+      degradedEndpoints: degradedEndpoints.length,
+      openCircuits: openCircuits.length
+    }
+  });
+});
+
 app.get('/api/metrics', (req, res) => {
   res.json(analytics.getMetrics());
 });
