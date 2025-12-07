@@ -9,6 +9,8 @@ export default function MonitorPage() {
   const [tweets, setTweets] = useState<EnrichedTweet[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [filter, setFilter] = useState<'all' | 'positive' | 'negative' | 'neutral'>('all');
+  const [displayCount, setDisplayCount] = useState(10); // Start with only 10 tweets
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://api.xpulse.buzz';
@@ -42,8 +44,9 @@ export default function MonitorPage() {
     socketInstance.on('tweets:bulk', (bulkTweets: EnrichedTweet[]) => {
       console.log('📦 [MONITOR] Bulk tweets received:', bulkTweets?.length || 0);
       if (Array.isArray(bulkTweets) && bulkTweets.length > 0) {
-        // Create a copy before reversing to avoid mutation
-        setTweets([...bulkTweets].reverse());
+        // Limit initial bulk load to prevent UI overload
+        const limitedTweets = bulkTweets.slice(0, 50);
+        setTweets([...limitedTweets].reverse());
       }
     });
 
@@ -52,10 +55,27 @@ export default function MonitorPage() {
     };
   }, []);
 
+  // Reset display count when filter changes
+  useEffect(() => {
+    setDisplayCount(10);
+  }, [filter]);
+
   const filteredTweets = tweets.filter(tweet => {
     if (filter === 'all') return true;
     return tweet.sentiment === filter;
   });
+
+  // Only display a limited number of tweets to prevent UI overload
+  const displayedTweets = filteredTweets.slice(0, displayCount);
+  const hasMore = filteredTweets.length > displayCount;
+
+  const loadMore = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setDisplayCount(prev => Math.min(prev + 10, filteredTweets.length));
+      setIsLoading(false);
+    }, 100);
+  };
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -149,9 +169,34 @@ export default function MonitorPage() {
             </div>
           </div>
         ) : (
-          filteredTweets.map((tweet) => (
-            <EnrichedTweetCard key={tweet.id} tweet={tweet} />
-          ))
+          <>
+            {displayedTweets.map((tweet) => (
+              <EnrichedTweetCard key={tweet.id} tweet={tweet} />
+            ))}
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={loadMore}
+                  disabled={isLoading}
+                  className="px-6 py-3 rounded-full bg-pulse-blue text-x-white font-medium hover:bg-pulse-blue/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading...
+                    </span>
+                  ) : (
+                    `Load More (${filteredTweets.length - displayCount} remaining)`
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { EnrichedTweet } from '@/types/tweet';
 import Image from 'next/image';
 
@@ -8,7 +8,7 @@ interface EnrichedTweetCardProps {
   tweet: EnrichedTweet;
 }
 
-export default function EnrichedTweetCard({ tweet }: EnrichedTweetCardProps) {
+function EnrichedTweetCard({ tweet }: EnrichedTweetCardProps) {
   const [imageError, setImageError] = useState(false);
 
   const formatNumber = (num: number | undefined) => {
@@ -63,6 +63,7 @@ export default function EnrichedTweetCard({ tweet }: EnrichedTweetCardProps) {
               height={48}
               className="rounded-full"
               unoptimized
+              loading="lazy"
               onError={() => setImageError(true)}
             />
           ) : (
@@ -191,3 +192,6 @@ export default function EnrichedTweetCard({ tweet }: EnrichedTweetCardProps) {
     </div>
   );
 }
+
+// Memoize to prevent unnecessary re-renders
+export default memo(EnrichedTweetCard);
