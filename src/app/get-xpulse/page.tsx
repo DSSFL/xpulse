@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 const xpulseFeatures = [
   {
     title: 'Celebrities',

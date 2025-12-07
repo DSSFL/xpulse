@@ -16,6 +16,10 @@ const nextConfig = {
       },
     ],
   },
+  // Disable static optimization to allow dynamic pages
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
 };
 
 export default nextConfig;

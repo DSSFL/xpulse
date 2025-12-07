@@ -6,6 +6,8 @@ import { io } from 'socket.io-client';
 import LiveDashboard from '@/components/LiveDashboard';
 import VortexLoader from '@/components/VortexLoader';
 
+export const dynamic = 'force-dynamic';
+
 function VitalsContent() {
   const searchParams = useSearchParams();
   const handle = searchParams.get('handle');

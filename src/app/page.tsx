@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import VortexLoader from '@/components/VortexLoader';
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const router = useRouter();
   const [handle, setHandle] = useState('');

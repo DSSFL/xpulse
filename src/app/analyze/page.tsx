@@ -9,6 +9,8 @@ import SentimentGauge from '@/components/SentimentGauge';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
 import VortexLoader from '@/components/VortexLoader';
 
+export const dynamic = 'force-dynamic';
+
 interface PersonalAnalysis {
   handle: string;
   analysis: {
