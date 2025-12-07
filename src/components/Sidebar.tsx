@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   {
@@ -68,6 +69,25 @@ const bottomNavItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const [profileData, setProfileData] = useState({
+    name: 'XPulse Admin',
+    handle: '@XPulseAdmin',
+    profilePicture: '',
+  });
+
+  // Load profile data from localStorage
+  useEffect(() => {
+    const savedName = localStorage.getItem('xpulse_name');
+    const savedHandle = localStorage.getItem('xpulse_handle');
+    const savedProfilePicture = localStorage.getItem('xpulse_profile_picture');
+
+    setProfileData({
+      name: savedName || 'XPulse Admin',
+      handle: savedHandle ? (savedHandle.startsWith('@') ? savedHandle : `@${savedHandle}`) : '@XPulseAdmin',
+      profilePicture: savedProfilePicture || '',
+    });
+  }, []);
 
   // Build href with preserved query params
   const buildHref = (basePath: string) => {
@@ -164,18 +184,22 @@ export default function Sidebar() {
         </div>
 
         {/* User Profile - X Style */}
-        <div className="mt-4 p-3 rounded-full hover:bg-x-gray-dark transition-colors cursor-pointer">
+        <Link href={buildHref('/settings')} className="mt-4 p-3 rounded-full hover:bg-x-gray-dark transition-colors cursor-pointer block">
           <div className="flex items-center gap-3">
             {/* Profile Photo */}
             <div className="w-10 h-10 rounded-full bg-x-gray-light flex items-center justify-center overflow-hidden flex-shrink-0">
-              <svg className="w-10 h-10 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
+              {profileData.profilePicture ? (
+                <img src={profileData.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-10 h-10 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              )}
             </div>
             {/* Name and Handle */}
             <div className="hidden xl:block flex-1 min-w-0">
-              <p className="text-x-white font-bold text-sm truncate">XPulse Admin</p>
-              <p className="text-x-gray-text text-sm truncate">@XPulseAdmin</p>
+              <p className="text-x-white font-bold text-sm truncate">{profileData.name}</p>
+              <p className="text-x-gray-text text-sm truncate">{profileData.handle}</p>
             </div>
             {/* Three dots menu */}
             <div className="hidden xl:block">
@@ -186,7 +210,7 @@ export default function Sidebar() {
               </svg>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );
