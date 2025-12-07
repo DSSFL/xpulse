@@ -80,13 +80,17 @@ export default function LiveDashboard() {
         console.error('❌ [XPULSE] Socket error:', error);
       });
 
-    socketInstance.on('metrics:update', (data: Metrics) => {
-      setMetrics(data);
-      setLastUpdate(new Date().toLocaleTimeString());
-    });
+      socketInstance.on('metrics:update', (data: Metrics) => {
+        if (data && typeof data === 'object') {
+          setMetrics(data);
+          setLastUpdate(new Date().toLocaleTimeString());
+        }
+      });
 
       socketInstance.on('tweet:new', (tweet: Tweet) => {
-        setRecentTweets(prev => [tweet, ...prev].slice(0, 10));
+        if (tweet && tweet.id) {
+          setRecentTweets(prev => [tweet, ...prev].slice(0, 10));
+        }
       });
 
       setSocket(socketInstance);
@@ -101,26 +105,26 @@ export default function LiveDashboard() {
     }
   }, []);
 
-  // Calculate sentiment percentage
-  const totalSentiment = metrics.sentiment.positive + metrics.sentiment.neutral + metrics.sentiment.negative;
+  // Calculate sentiment percentage with safe defaults
+  const totalSentiment = (metrics.sentiment?.positive || 0) + (metrics.sentiment?.neutral || 0) + (metrics.sentiment?.negative || 0);
   const sentimentScore = totalSentiment > 0
-    ? ((metrics.sentiment.positive - metrics.sentiment.negative) / totalSentiment) * 100
+    ? (((metrics.sentiment?.positive || 0) - (metrics.sentiment?.negative || 0)) / totalSentiment) * 100
     : 0;
 
   // Use enriched metrics from backend or fallbacks
-  const viralityRisk = metrics.viralityRisk ?? Math.min(Math.floor(metrics.velocity / 3), 100);
+  const viralityRisk = metrics.viralityRisk ?? Math.min(Math.floor((metrics.velocity || 0) / 3), 100);
   const authenticityScore = metrics.authenticityScore ?? (totalSentiment > 0
-    ? Math.min(100, Math.round((metrics.sentiment.neutral / totalSentiment) * 100))
+    ? Math.min(100, Math.round(((metrics.sentiment?.neutral || 0) / totalSentiment) * 100))
     : 0);
-  const narrativeCoherence = metrics.narrativeCoherence ?? (metrics.velocity > 150 ? "high" : metrics.velocity > 50 ? "medium" : "low");
-  const responseWindow = metrics.responseWindow ?? Math.max(1, Math.floor(6 - metrics.velocity / 50));
+  const narrativeCoherence = metrics.narrativeCoherence ?? ((metrics.velocity || 0) > 150 ? "high" : (metrics.velocity || 0) > 50 ? "medium" : "low");
+  const responseWindow = metrics.responseWindow ?? Math.max(1, Math.floor(6 - (metrics.velocity || 0) / 50));
 
   // Calculate origin percentages - use coordinatedActivity from backend
   const coordinatedPct = metrics.coordinatedActivity ?? 0;
   const originData = {
     organic: Math.max(0, 70 - coordinatedPct),
-    media: Math.min(20, Math.round(metrics.engagementRate ?? 20 / 4)),
-    influencer: Math.min(15, Math.round((metrics.viralityRisk ?? 0) / 5)),
+    media: Math.min(20, Math.round((metrics.engagementRate ?? 20) / 4)),
+    influencer: Math.min(15, Math.round(viralityRisk / 5)),
     coordinated: coordinatedPct
   };
 
@@ -167,11 +171,11 @@ export default function LiveDashboard() {
           </p>
           <div className="flex gap-8 mt-6">
             <div>
-              <p className="text-vital-healthy text-2xl font-bold">{metrics.sentiment.negative > 50 ? metrics.sentiment.negative : 0}</p>
+              <p className="text-vital-healthy text-2xl font-bold">{(metrics.sentiment?.negative || 0) > 50 ? (metrics.sentiment?.negative || 0) : 0}</p>
               <p className="text-x-gray-text text-sm">critical threats</p>
             </div>
             <div>
-              <p className="text-vital-warning text-2xl font-bold">{metrics.sentiment.negative > 0 ? Math.min(metrics.sentiment.negative, 10) : 3}</p>
+              <p className="text-vital-warning text-2xl font-bold">{(metrics.sentiment?.negative || 0) > 0 ? Math.min((metrics.sentiment?.negative || 0), 10) : 3}</p>
               <p className="text-x-gray-text text-sm">emerging risks</p>
             </div>
             <div>
@@ -207,9 +211,9 @@ export default function LiveDashboard() {
 
           <VitalCard
             title="Sentiment Pressure"
-            value={`${metrics.sentiment.positive || 68}/${metrics.sentiment.negative || 32}`}
+            value={`${metrics.sentiment?.positive || 68}/${metrics.sentiment?.negative || 32}`}
             unit="pos/neg"
-            status={metrics.sentiment.negative > metrics.sentiment.positive ? "warning" : "neutral"}
+            status={(metrics.sentiment?.negative || 0) > (metrics.sentiment?.positive || 0) ? "warning" : "neutral"}
             trend="stable"
             subtitle="Building tension before eruption"
             icon={
