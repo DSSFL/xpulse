@@ -11,13 +11,16 @@ export default function SentimentGauge({
   label = 'Sentiment',
   size = 'md',
 }: SentimentGaugeProps) {
+  // Validate and sanitize value to prevent NaN
+  const safeValue = typeof value === 'number' && !isNaN(value) ? Math.max(-100, Math.min(100, value)) : 0;
+
   // Normalize value to 0-180 degrees for the gauge
-  const normalizedValue = ((value + 100) / 200) * 180;
+  const normalizedValue = ((safeValue + 100) / 200) * 180;
 
   // Determine color based on value
   const getColor = () => {
-    if (value > 30) return '#00FF88';
-    if (value < -30) return '#FF3B3B';
+    if (safeValue > 30) return '#00FF88';
+    if (safeValue < -30) return '#FF3B3B';
     return '#00D4FF';
   };
 
@@ -93,7 +96,7 @@ export default function SentimentGauge({
         className={`${config.fontSize} font-bold mt-2`}
         style={{ color: getColor() }}
       >
-        {value > 0 ? '+' : ''}{value}
+        {safeValue > 0 ? '+' : ''}{safeValue}
       </span>
 
       {/* Label */}

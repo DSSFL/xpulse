@@ -6,6 +6,7 @@ import VitalCard from '@/components/VitalCard';
 import EKGLine from '@/components/EKGLine';
 import SentimentGauge from '@/components/SentimentGauge';
 import GlobalHeatMap from '@/components/GlobalHeatMap';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Metrics {
   tweetsPerMinute: number;
@@ -107,9 +108,10 @@ export default function LiveDashboard() {
 
   // Calculate sentiment percentage with safe defaults
   const totalSentiment = (metrics.sentiment?.positive || 0) + (metrics.sentiment?.neutral || 0) + (metrics.sentiment?.negative || 0);
-  const sentimentScore = totalSentiment > 0
+  const rawSentimentScore = totalSentiment > 0
     ? (((metrics.sentiment?.positive || 0) - (metrics.sentiment?.negative || 0)) / totalSentiment) * 100
     : 0;
+  const sentimentScore = (typeof rawSentimentScore === 'number' && !isNaN(rawSentimentScore)) ? rawSentimentScore : 0;
 
   // Use enriched metrics from backend or fallbacks
   const viralityRisk = metrics.viralityRisk ?? Math.min(Math.floor((metrics.velocity || 0) / 3), 100);
@@ -292,7 +294,9 @@ export default function LiveDashboard() {
             Sentiment Analysis
           </h3>
           <div className="flex justify-center">
-            <SentimentGauge value={sentimentScore || 24} label="Current Narrative Sentiment" size="lg" />
+            <ErrorBoundary>
+              <SentimentGauge value={sentimentScore || 24} label="Current Narrative Sentiment" size="lg" />
+            </ErrorBoundary>
           </div>
         </div>
 
@@ -346,7 +350,9 @@ export default function LiveDashboard() {
 
       {/* Global Heat Map */}
       <section className="mb-8">
-        <GlobalHeatMap />
+        <ErrorBoundary>
+          <GlobalHeatMap />
+        </ErrorBoundary>
       </section>
 
       {/* Live Tweet Stream */}

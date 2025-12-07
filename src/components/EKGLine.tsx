@@ -90,18 +90,25 @@ export default function EKGLine({
 
     // Set canvas size
     const resizeCanvas = () => {
-      canvas.width = canvas.offsetWidth * 2;
+      const width = canvas.offsetWidth || canvas.clientWidth || 0;
+      if (width === 0) return; // Skip if dimensions not available yet
+
+      canvas.width = width * 2;
       canvas.height = height * 2;
       ctx.scale(2, 2);
     };
 
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', resizeCanvas);
+    }
     draw();
 
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resizeCanvas);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', resizeCanvas);
+      }
     };
   }, [color, height, speed]);
 
