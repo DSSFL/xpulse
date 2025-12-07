@@ -21,7 +21,7 @@ const config: Config = {
         'x-blue': '#1D9BF0',
 
         // XPulse medical vitals colors
-        'pulse-blue': '#00D4FF',
+        'pulse-blue': '#1D9BF0',
         'pulse-teal': '#00FFC8',
         'pulse-green': '#00FF88',
         'pulse-yellow': '#FFD700',
@@ -33,7 +33,7 @@ const config: Config = {
         'vital-healthy': '#00FF88',
         'vital-warning': '#FFD700',
         'vital-critical': '#FF3B3B',
-        'vital-neutral': '#00D4FF',
+        'vital-neutral': '#1D9BF0',
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
@@ -65,7 +65,7 @@ const config: Config = {
         },
       },
       boxShadow: {
-        'glow-blue': '0 0 20px rgba(0, 212, 255, 0.3)',
+        'glow-blue': '0 0 20px rgba(29, 155, 240, 0.3)',
         'glow-green': '0 0 20px rgba(0, 255, 136, 0.3)',
         'glow-red': '0 0 20px rgba(255, 59, 59, 0.3)',
       },
