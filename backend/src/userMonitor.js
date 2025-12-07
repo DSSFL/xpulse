@@ -1,5 +1,7 @@
 import { analyzeUserActivityWithGrok } from './grok.js';
 import { xApiErrorHandler } from './xApiErrorHandler.js';
+import { database } from './database.js';
+import { BackfillService } from './backfillService.js';
 
 /**
  * Helper function to upgrade profile image URL to higher resolution
@@ -13,6 +15,7 @@ function upgradeProfileImageUrl(url) {
 /**
  * User Activity Monitor
  * Tracks user-specific activity: mentions, likes, replies, quotes, own posts
+ * Now with database persistence and historical backfill
  */
 export class UserActivityMonitor {
   constructor(twitterClient, analytics, io) {
@@ -23,6 +26,7 @@ export class UserActivityMonitor {
     this.processedIds = new Map(); // username -> Set of processed tweet IDs
     this.lastAnalysis = new Map(); // username -> last analysis data
     this.recentActivities = new Map(); // username -> array of recent activities for analysis
+    this.backfillService = new BackfillService(twitterClient);
   }
 
   /**
@@ -48,11 +52,25 @@ export class UserActivityMonitor {
       const userId = user.data.id;
       const userInfo = user.data;
 
+      // Store user in database for persistence
+      const dbUser = await database.upsertTrackedUser({
+        username: userInfo.username,
+        user_id: userInfo.id,
+        display_name: userInfo.name,
+        profile_image_url: upgradeProfileImageUrl(userInfo.profile_image_url),
+        verified: userInfo.verified || false,
+        followers_count: userInfo.public_metrics?.followers_count || 0,
+        following_count: userInfo.public_metrics?.following_count || 0,
+        tweet_count: userInfo.public_metrics?.tweet_count || 0,
+        description: userInfo.description || ''
+      });
+
       // Store monitoring config
       this.activeMonitors.set(socketId, {
         username,
         userId,
         userInfo,
+        dbUserId: dbUser.id,
         startTime: Date.now(),
         activityCount: 0
       });
@@ -60,6 +78,27 @@ export class UserActivityMonitor {
       // Initialize processed IDs set
       if (!this.processedIds.has(username)) {
         this.processedIds.set(username, new Set());
+      }
+
+      // Check if backfill is needed and run in background
+      const needsBackfill = await this.backfillService.isBackfillNeeded(username);
+      if (needsBackfill) {
+        console.log(`📦 [USER MONITOR] Starting backfill for @${username}...`);
+        // Run backfill in background (don't await - let it run async)
+        this.backfillService.backfillUser(username, userId, dbUser.id)
+          .then((count) => {
+            console.log(`✅ [USER MONITOR] Backfill completed for @${username}: ${count} tweets`);
+            // Notify client that historical data is available
+            this.io.to(socketId).emit('monitor:backfill-complete', {
+              username,
+              tweetCount: count
+            });
+          })
+          .catch((err) => {
+            console.error(`❌ [USER MONITOR] Backfill failed for @${username}:`, err);
+          });
+      } else {
+        console.log(`✅ [USER MONITOR] Backfill already completed for @${username}`);
       }
 
       // Emit user info to client

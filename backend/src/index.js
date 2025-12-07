@@ -8,8 +8,14 @@ import { AnalyticsEngine } from './analytics.js';
 import { analyzeUserWithGrok } from './grok.js';
 import { UserActivityMonitor } from './userMonitor.js';
 import { xApiErrorHandler } from './xApiErrorHandler.js';
+import { database } from './database.js';
 
 dotenv.config();
+
+// Initialize database connection
+console.log('🔌 [STARTUP] Initializing database connection...');
+await database.testConnection();
+await database.initializeSchema();
 
 // Initialize X API v2 client
 const twitterClient = new TwitterApi(process.env.TWITTER_BEARER_TOKEN);
@@ -252,6 +258,75 @@ app.get('/health/api-status', (req, res) => {
 
 app.get('/api/metrics', (req, res) => {
   res.json(analytics.getMetrics());
+});
+
+// Get historical posts for a user
+app.get('/api/history/posts/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const limit = parseInt(req.query.limit) || 100;
+
+    const posts = await database.getRecentPosts(username, limit);
+
+    res.json({
+      success: true,
+      username,
+      count: posts.length,
+      posts
+    });
+  } catch (error) {
+    console.error('❌ [API] Error fetching historical posts:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get analytics history for a user
+app.get('/api/history/analytics/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const limit = parseInt(req.query.limit) || 100;
+
+    const analytics = await database.getAnalyticsHistory(username, limit);
+
+    res.json({
+      success: true,
+      username,
+      count: analytics.length,
+      analytics
+    });
+  } catch (error) {
+    console.error('❌ [API] Error fetching analytics history:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get tracked users list
+app.get('/api/users/tracked', async (req, res) => {
+  try {
+    const client = await database.pool.connect();
+    const result = await client.query(
+      'SELECT username, display_name, verified, followers_count, first_tracked_at, last_updated_at, backfill_completed FROM tracked_users WHERE is_active = true ORDER BY last_updated_at DESC LIMIT 50'
+    );
+    client.release();
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      users: result.rows
+    });
+  } catch (error) {
+    console.error('❌ [API] Error fetching tracked users:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Store active tracking configurations per socket
