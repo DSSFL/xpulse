@@ -1,4 +1,4 @@
-// Comprehensive X API Tweet type with all enriched data
+// Comprehensive X API Post type with all enriched data
 export interface XUser {
   id: string;
   name: string;
@@ -8,7 +8,7 @@ export interface XUser {
   description?: string;
   followers_count: number;
   following_count: number;
-  tweet_count: number;
+  post_count: number;
   created_at: string;
   location?: string;
   url?: string;
@@ -16,7 +16,7 @@ export interface XUser {
 
 export interface PublicMetrics {
   like_count: number;
-  retweet_count: number;
+  repost_count: number;
   reply_count: number;
   quote_count: number;
   impression_count: number;
@@ -59,7 +59,7 @@ export interface Entities {
   media?: Media[];
 }
 
-export interface EnrichedTweet {
+export interface EnrichedPost {
   id: string;
   text: string;
   created_at: string;
@@ -72,8 +72,8 @@ export interface EnrichedTweet {
   source?: string;
   language: string;
   possibly_sensitive: boolean;
-  referenced_tweets?: Array<{
-    type: 'retweeted' | 'quoted' | 'replied_to';
+  referenced_posts?: Array<{
+    type: 'reposted' | 'quoted' | 'replied_to';
     id: string;
   }>;
   geo?: {
@@ -82,3 +82,6 @@ export interface EnrichedTweet {
     coordinates?: [number, number];
   };
 }
+
+// Legacy alias for backward compatibility during migration
+export type EnrichedTweet = EnrichedPost;

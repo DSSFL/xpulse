@@ -9,7 +9,7 @@ interface VelocityMeterProps {
 export default function VelocityMeter({
   current,
   max,
-  label = 'tweets/min',
+  label = 'posts/min',
 }: VelocityMeterProps) {
   const percentage = Math.min((current / max) * 100, 100);
 

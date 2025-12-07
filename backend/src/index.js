@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { TwitterApi } from 'twitter-api-v2';
+import { AnalyticsEngine } from './analytics.js';
 
 dotenv.config();
 
@@ -27,43 +28,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Metrics tracking
-let metrics = {
-  tweetsPerMinute: 0,
-  totalTweets: 0,
-  sentiment: { positive: 0, neutral: 0, negative: 0 },
-  velocity: 0,
-  lastMinuteTweets: []
-};
+// Initialize analytics engine
+const analytics = new AnalyticsEngine({
+  windowSize: 60000, // 1 minute
+  spikeThreshold: 2.0 // 2x baseline = spike
+});
 
-// Track processed tweets to avoid duplicates
-const processedTweetIds = new Set();
+// Track processed posts to avoid duplicates
+const processedPostIds = new Set();
 
-// Simple sentiment analysis
-function analyzeSentiment(text) {
-  const lowerText = text.toLowerCase();
-  const positiveWords = ['amazing', 'great', 'awesome', 'love', 'excellent', 'incredible', 'fantastic', 'wonderful', 'breakthrough', 'innovation'];
-  const negativeWords = ['terrible', 'bad', 'awful', 'hate', 'concern', 'worried', 'disaster', 'crisis', 'problem', 'issue'];
-
-  let score = 0;
-  positiveWords.forEach(word => {
-    if (lowerText.includes(word)) score++;
-  });
-  negativeWords.forEach(word => {
-    if (lowerText.includes(word)) score--;
-  });
-
-  if (score > 0) return 'positive';
-  if (score < 0) return 'negative';
-  return 'neutral';
-}
-
-// Fetch real tweets from X API v2
-async function fetchRealTweets() {
+// Fetch real posts from X API v2
+async function fetchRealPosts() {
   try {
-    console.log('🔍 Fetching real tweets from X API v2...');
+    console.log('🔍 Fetching real posts from X API v2...');
 
-    // Search for recent tweets about tech, AI, crypto, markets (trending topics)
+    // Search for recent posts about tech, AI, crypto, markets (trending topics)
     const searchQuery = '(tech OR AI OR crypto OR bitcoin OR market OR breaking) -is:retweet lang:en';
 
     const result = await roClient.v2.search(searchQuery, {
@@ -73,9 +52,9 @@ async function fetchRealTweets() {
       expansions: ['author_id']
     });
 
-    // Check if we have tweets
+    // Check if we have posts
     if (!result || !result.data || !result.data.data) {
-      console.log('⚠️  No tweets returned from API');
+      console.log('⚠️  No posts returned from API');
       return;
     }
 
@@ -87,67 +66,77 @@ async function fetchRealTweets() {
       });
     }
 
-    // Get tweets array
-    const tweetsArray = Array.isArray(result.data.data) ? result.data.data : [result.data.data];
+    // Get posts array
+    const postsArray = Array.isArray(result.data.data) ? result.data.data : [result.data.data];
 
-    // Process each tweet
-    for (const tweet of tweetsArray) {
+    // Process each post
+    for (const post of postsArray) {
       // Skip if already processed
-      if (processedTweetIds.has(tweet.id)) continue;
+      if (processedPostIds.has(post.id)) continue;
 
-      processedTweetIds.add(tweet.id);
+      processedPostIds.add(post.id);
 
       // Get author info
-      const author = users[tweet.author_id] || {
+      const author = users[post.author_id] || {
+        id: post.author_id,
         username: 'unknown',
         name: 'Unknown User',
         profile_image_url: null,
         verified: false
       };
 
-      // Analyze sentiment
-      const sentiment = analyzeSentiment(tweet.text);
-
-      // Update metrics
-      metrics.totalTweets++;
-      metrics.lastMinuteTweets.push(Date.now());
-
-      if (sentiment === 'positive') metrics.sentiment.positive++;
-      else if (sentiment === 'negative') metrics.sentiment.negative++;
-      else metrics.sentiment.neutral++;
-
-      // Broadcast to clients with enriched data
-      io.emit('tweet:new', {
-        id: tweet.id,
-        text: tweet.text,
+      // Create enriched post
+      const enrichedPost = {
+        id: post.id,
+        text: post.text,
+        created_at: post.created_at,
         author: {
           id: author.id,
           username: author.username,
           name: author.name,
           profile_image_url: author.profile_image_url,
-          verified: author.verified || false
+          verified: author.verified || false,
+          followers_count: author.public_metrics?.followers_count || 0,
+          following_count: author.public_metrics?.following_count || 0,
+          post_count: author.public_metrics?.tweet_count || 0
         },
-        created_at: tweet.created_at,
         public_metrics: {
-          like_count: tweet.public_metrics?.like_count || 0,
-          retweet_count: tweet.public_metrics?.retweet_count || 0,
-          reply_count: tweet.public_metrics?.reply_count || 0,
-          impression_count: tweet.public_metrics?.impression_count || 0
-        }
+          like_count: post.public_metrics?.like_count || 0,
+          repost_count: post.public_metrics?.retweet_count || 0,
+          reply_count: post.public_metrics?.reply_count || 0,
+          quote_count: post.public_metrics?.quote_count || 0,
+          impression_count: post.public_metrics?.impression_count || 0
+        },
+        bot_probability: 0 // Will be calculated by analytics
+      };
+
+      // Analyze post with analytics engine
+      analytics.analyzePost(enrichedPost);
+
+      // Get sentiment from analytics
+      const sentiment = analytics.analyzeSentiment(post.text);
+
+      // Broadcast to clients with enriched data
+      io.emit('post:new', {
+        ...enrichedPost,
+        sentiment,
+        engagement: (enrichedPost.public_metrics.like_count || 0) +
+                   (enrichedPost.public_metrics.repost_count || 0) +
+                   (enrichedPost.public_metrics.reply_count || 0)
       });
 
-      console.log(`✅ Broadcasted tweet from @${author.username}: ${tweet.text.substring(0, 50)}...`);
+      console.log(`✅ Broadcasted post from @${author.username}: ${post.text.substring(0, 50)}...`);
     }
 
     // Cleanup old IDs to prevent memory leak (keep last 1000)
-    if (processedTweetIds.size > 1000) {
-      const idsArray = Array.from(processedTweetIds);
-      processedTweetIds.clear();
-      idsArray.slice(-1000).forEach(id => processedTweetIds.add(id));
+    if (processedPostIds.size > 1000) {
+      const idsArray = Array.from(processedPostIds);
+      processedPostIds.clear();
+      idsArray.slice(-1000).forEach(id => processedPostIds.add(id));
     }
 
   } catch (error) {
-    console.error('❌ Error fetching tweets:', error.message);
+    console.error('❌ Error fetching posts:', error.message);
     console.error('Error details:', error);
     if (error.code === 429) {
       console.log('⚠️  Rate limit reached. Waiting before next request...');
@@ -155,34 +144,29 @@ async function fetchRealTweets() {
   }
 }
 
-// Start real tweet stream
-function startRealTweetStream() {
-  console.log('🚀 Starting REAL X API v2 tweet stream...');
+// Start real post stream
+function startRealPostStream() {
+  console.log('🚀 Starting REAL X API v2 post stream with ADVANCED ANALYTICS...');
   console.log('📡 Using bearer token authentication');
 
   // Fetch immediately
-  fetchRealTweets();
+  fetchRealPosts();
 
   // Then poll every 10 seconds (respects rate limits)
   setInterval(() => {
-    fetchRealTweets();
+    fetchRealPosts();
   }, 10000);
 }
 
-// Calculate velocity every second
+// Broadcast metrics every second
 setInterval(() => {
-  const now = Date.now();
-  const oneMinuteAgo = now - 60000;
-
-  metrics.lastMinuteTweets = metrics.lastMinuteTweets.filter(
-    timestamp => timestamp > oneMinuteAgo
-  );
-
-  metrics.tweetsPerMinute = metrics.lastMinuteTweets.length;
-  metrics.velocity = metrics.tweetsPerMinute;
-
-  // Broadcast updated metrics
+  const metrics = analytics.getMetrics();
   io.emit('metrics:update', metrics);
+
+  // Log spike detection
+  if (analytics.spikeDetected) {
+    console.log(`🚨 SPIKE DETECTED: ${metrics.velocity} posts/min | Virality: ${metrics.viralityRisk}% | Coherence: ${metrics.narrativeCoherence}`);
+  }
 }, 1000);
 
 // API Routes
@@ -190,21 +174,22 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     uptime: process.uptime(),
-    mode: 'REAL_X_API_V2',
-    message: 'Backend running with REAL X API v2 data',
-    totalTweets: metrics.totalTweets,
-    processedTweets: processedTweetIds.size
+    mode: 'REAL_X_API_V2_ENHANCED',
+    message: 'Backend running with REAL X API v2 data + Advanced Analytics',
+    metrics: analytics.getMetrics(),
+    totalPosts: analytics.getMetrics().totalPosts,
+    processedPosts: processedPostIds.size
   });
 });
 
 app.get('/api/metrics', (req, res) => {
-  res.json(metrics);
+  res.json(analytics.getMetrics());
 });
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log('👤 Client connected:', socket.id, 'from', socket.handshake.headers.origin);
-  socket.emit('metrics:update', metrics);
+  socket.emit('metrics:update', analytics.getMetrics());
 
   socket.on('disconnect', () => {
     console.log('👋 Client disconnected:', socket.id);
@@ -214,9 +199,20 @@ io.on('connection', (socket) => {
 // Start server
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 X Pulse Backend running on port ${PORT}`);
-  console.log(`✅ Running in REAL X API v2 mode`);
-  console.log(`✅ CORS enabled for: xpulse.buzz, www.xpulse.buzz`);
-  console.log(`🔑 Bearer token configured: ${process.env.TWITTER_BEARER_TOKEN ? 'YES' : 'NO'}`);
-  startRealTweetStream();
+  console.log(`
+╔════════════════════════════════════════════════════════════╗
+║          X PULSE - ENHANCED INTELLIGENCE BACKEND            ║
+╠════════════════════════════════════════════════════════════╣
+║  🚀 Port: ${PORT}                                           ║
+║  ✅ Mode: X API v2 + Advanced Analytics Engine             ║
+║  📡 Real-time data: ENABLED                                 ║
+║  🔍 Bot detection: ENABLED                                  ║
+║  📊 Spike detection: ENABLED                                ║
+║  🎯 Narrative analysis: ENABLED                             ║
+║  📈 Virality risk: ENABLED                                  ║
+║  🛡️  Authenticity scoring: ENABLED                          ║
+║  🔑 Bearer token: ${process.env.TWITTER_BEARER_TOKEN ? 'CONFIGURED' : 'MISSING'}                              ║
+╚════════════════════════════════════════════════════════════╝
+  `);
+  startRealPostStream();
 });

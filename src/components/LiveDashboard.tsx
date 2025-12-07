@@ -9,8 +9,8 @@ import GlobalHeatMap from '@/components/GlobalHeatMap';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Metrics {
-  tweetsPerMinute: number;
-  totalTweets: number;
+  postsPerMinute: number;
+  totalPosts: number;
   sentiment: {
     positive: number;
     neutral: number;
@@ -28,7 +28,7 @@ interface Metrics {
   topKeywords?: Array<{ word: string; count: number }>;
 }
 
-interface Tweet {
+interface Post {
   id: string;
   text: string;
   author: string | { username: string; name: string; [key: string]: unknown };
@@ -38,12 +38,12 @@ interface Tweet {
 export default function LiveDashboard() {
   const [, setSocket] = useState<Socket | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({
-    tweetsPerMinute: 0,
-    totalTweets: 0,
+    postsPerMinute: 0,
+    totalPosts: 0,
     sentiment: { positive: 0, neutral: 0, negative: 0 },
     velocity: 0
   });
-  const [recentTweets, setRecentTweets] = useState<Tweet[]>([]);
+  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--');
 
@@ -88,9 +88,9 @@ export default function LiveDashboard() {
         }
       });
 
-      socketInstance.on('tweet:new', (tweet: Tweet) => {
-        if (tweet && tweet.id) {
-          setRecentTweets(prev => [tweet, ...prev].slice(0, 10));
+      socketInstance.on('post:new', (post: Post) => {
+        if (post && post.id) {
+          setRecentPosts(prev => [post, ...prev].slice(0, 10));
         }
       });
 
@@ -166,10 +166,10 @@ export default function LiveDashboard() {
             <span className="text-x-gray-text text-sm uppercase tracking-wider">Global Monitoring {isConnected ? 'Active' : 'Offline'}</span>
           </div>
           <h2 className="text-4xl font-bold gradient-text mb-2">
-            {metrics.totalTweets > 0 ? metrics.totalTweets.toLocaleString() : 'All Systems Nominal'}
+            {metrics.totalPosts > 0 ? metrics.totalPosts.toLocaleString() : 'All Systems Nominal'}
           </h2>
           <p className="text-x-gray-text">
-            {metrics.totalTweets > 0 ? 'tweets tracked since start' : 'Monitoring active narratives across X'}
+            {metrics.totalPosts > 0 ? 'posts tracked since start' : 'Monitoring active narratives across X'}
           </p>
           <div className="flex gap-8 mt-6">
             <div>
@@ -199,10 +199,10 @@ export default function LiveDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <VitalCard
             title="Threat Velocity"
-            value={metrics.tweetsPerMinute.toString() || "127"}
+            value={metrics.postsPerMinute.toString() || "127"}
             unit="mentions/min"
-            status={metrics.tweetsPerMinute > 100 ? "warning" : "healthy"}
-            trend={metrics.tweetsPerMinute > 50 ? "up" : "stable"}
+            status={metrics.postsPerMinute > 100 ? "warning" : "healthy"}
+            trend={metrics.postsPerMinute > 50 ? "up" : "stable"}
             subtitle="Speed of negative narrative spread"
             icon={
               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -355,31 +355,31 @@ export default function LiveDashboard() {
         </ErrorBoundary>
       </section>
 
-      {/* Live Tweet Stream */}
+      {/* Live Post Stream */}
       <section>
         <h2 className="text-lg font-semibold text-x-white mb-4 flex items-center gap-2">
           <svg className="w-5 h-5 text-pulse-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
           </svg>
-          Live Tweet Stream
+          Live Post Stream
         </h2>
         <div className="space-y-3">
-          {recentTweets.length === 0 ? (
+          {recentPosts.length === 0 ? (
             <div className="p-6 rounded-xl bg-x-gray-dark border border-x-gray-border text-center text-x-gray-text">
-              Waiting for tweets... Connect to backend to see live data.
+              Waiting for posts... Connect to backend to see live data.
             </div>
           ) : (
-            recentTweets.map((tweet) => (
-              <div key={tweet.id} className="p-4 rounded-xl bg-x-gray-dark border border-x-gray-border hover:border-x-blue transition-colors">
+            recentPosts.map((post) => (
+              <div key={post.id} className="p-4 rounded-xl bg-x-gray-dark border border-x-gray-border hover:border-x-blue transition-colors">
                 <div className="flex items-start gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-x-white font-semibold">@{typeof tweet.author === 'string' ? tweet.author : tweet.author?.username || 'Unknown'}</span>
+                      <span className="text-x-white font-semibold">@{typeof post.author === 'string' ? post.author : post.author?.username || 'Unknown'}</span>
                       <span className="text-x-gray-text text-xs">
-                        {new Date(tweet.created_at).toLocaleTimeString()}
+                        {new Date(post.created_at).toLocaleTimeString()}
                       </span>
                     </div>
-                    <p className="text-x-gray-text text-sm">{tweet.text}</p>
+                    <p className="text-x-gray-text text-sm">{post.text}</p>
                   </div>
                 </div>
               </div>

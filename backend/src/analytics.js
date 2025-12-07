@@ -1,0 +1,429 @@
+/**
+ * Real-time Analytics Engine
+ * Tracks velocity, spikes, sentiment, and narrative patterns
+ */
+export class AnalyticsEngine {
+  constructor(options = {}) {
+    this.windowSize = options.windowSize || 60000; // 1 minute default
+    this.spikeThreshold = options.spikeThreshold || 2.0; // 2x average = spike
+
+    // Time-series data
+    this.postTimestamps = [];
+    this.sentimentHistory = [];
+    this.hashtagCounts = new Map();
+    this.keywordCounts = new Map();
+    this.authorActivity = new Map();
+
+    // Metrics
+    this.metrics = {
+      totalPosts: 0,
+      postsPerMinute: 0,
+      velocity: 0,
+      sentiment: {
+        positive: 0,
+        neutral: 0,
+        negative: 0
+      },
+      viralityRisk: 0,
+      authenticityScore: 100,
+      narrativeCoherence: 'low',
+      responseWindow: 6,
+      engagementRate: 0,
+      coordinatedActivity: 0,
+      topHashtags: [],
+      topKeywords: [],
+      avgFollowers: 0,
+      botPercentage: 0
+    };
+
+    // Spike detection
+    this.baselineVelocity = 0;
+    this.spikeDetected = false;
+    this.spikeStartTime = null;
+
+    // Start cleanup interval
+    this.startCleanup();
+  }
+
+  /**
+   * Analyze incoming post
+   */
+  analyzePost(post) {
+    const now = Date.now();
+
+    // Track timestamp
+    this.postTimestamps.push(now);
+    this.metrics.totalPosts++;
+
+    // Analyze sentiment
+    const sentiment = this.analyzeSentiment(post.text);
+    this.sentimentHistory.push({ sentiment, timestamp: now });
+    this.metrics.sentiment[sentiment]++;
+
+    // Extract and count hashtags
+    if (post.entities?.hashtags) {
+      post.entities.hashtags.forEach(tag => {
+        const count = this.hashtagCounts.get(tag.tag) || 0;
+        this.hashtagCounts.set(tag.tag, count + 1);
+      });
+    }
+
+    // Extract keywords
+    this.extractKeywords(post.text).forEach(keyword => {
+      const count = this.keywordCounts.get(keyword) || 0;
+      this.keywordCounts.set(keyword, count + 1);
+    });
+
+    // Track author activity
+    const authorId = post.author.id;
+    if (!this.authorActivity.has(authorId)) {
+      this.authorActivity.set(authorId, {
+        postCount: 0,
+        firstSeen: now,
+        lastSeen: now,
+        avgTimeBetweenPosts: 0,
+        posts: []
+      });
+    }
+
+    const authorData = this.authorActivity.get(authorId);
+    authorData.postCount++;
+    authorData.lastSeen = now;
+    authorData.posts.push(now);
+
+    // Calculate average time between posts for this author
+    if (authorData.posts.length > 1) {
+      const times = authorData.posts;
+      let totalGap = 0;
+      for (let i = 1; i < times.length; i++) {
+        totalGap += times[i] - times[i - 1];
+      }
+      authorData.avgTimeBetweenPosts = totalGap / (times.length - 1);
+    }
+
+    // Update computed metrics
+    this.updateMetrics();
+
+    // Check for bot probability contribution
+    if (post.bot_probability > 0.5) {
+      this.metrics.botPercentage =
+        (this.metrics.botPercentage * (this.metrics.totalPosts - 1) + post.bot_probability) /
+        this.metrics.totalPosts;
+    }
+
+    // Track engagement
+    const engagement =
+      (post.public_metrics.like_count || 0) +
+      (post.public_metrics.repost_count || 0) +
+      (post.public_metrics.reply_count || 0);
+
+    this.metrics.engagementRate =
+      (this.metrics.engagementRate * (this.metrics.totalPosts - 1) + engagement) /
+      this.metrics.totalPosts;
+
+    // Track average followers
+    this.metrics.avgFollowers =
+      (this.metrics.avgFollowers * (this.metrics.totalPosts - 1) + (post.author.followers_count || 0)) /
+      this.metrics.totalPosts;
+
+    return this.metrics;
+  }
+
+  /**
+   * Simple sentiment analysis
+   */
+  analyzeSentiment(text) {
+    const lowerText = text.toLowerCase();
+    const positiveWords = [
+      'amazing', 'great', 'awesome', 'love', 'excellent', 'incredible',
+      'fantastic', 'wonderful', 'breakthrough', 'innovation', 'success',
+      'win', 'winning', 'best', 'perfect', 'beautiful', 'happy', 'good'
+    ];
+    const negativeWords = [
+      'terrible', 'bad', 'awful', 'hate', 'concern', 'worried',
+      'disaster', 'crisis', 'problem', 'issue', 'fail', 'failure',
+      'worst', 'horrible', 'sad', 'angry', 'disgusting', 'scary'
+    ];
+
+    let score = 0;
+    positiveWords.forEach(word => {
+      if (lowerText.includes(word)) score++;
+    });
+    negativeWords.forEach(word => {
+      if (lowerText.includes(word)) score--;
+    });
+
+    if (score > 0) return 'positive';
+    if (score < 0) return 'negative';
+    return 'neutral';
+  }
+
+  /**
+   * Extract keywords from text
+   */
+  extractKeywords(text) {
+    // Simple keyword extraction (words longer than 4 chars, excluding common words)
+    const commonWords = new Set([
+      'that', 'this', 'with', 'from', 'have', 'been', 'were', 'they',
+      'what', 'when', 'where', 'which', 'who', 'will', 'would', 'could',
+      'should', 'their', 'there', 'these', 'those', 'about', 'after',
+      'before', 'being', 'during', 'into', 'through', 'under', 'above'
+    ]);
+
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 4 && !commonWords.has(word))
+      .slice(0, 10); // Top 10 keywords per post
+  }
+
+  /**
+   * Update computed metrics
+   */
+  updateMetrics() {
+    const now = Date.now();
+    const oneMinuteAgo = now - this.windowSize;
+
+    // Calculate posts per minute (velocity)
+    const recentPosts = this.postTimestamps.filter(ts => ts > oneMinuteAgo);
+    this.metrics.postsPerMinute = recentPosts.length;
+    this.metrics.velocity = recentPosts.length;
+
+    // Detect spikes
+    this.detectSpike();
+
+    // Calculate virality risk
+    this.metrics.viralityRisk = this.calculateViralityRisk();
+
+    // Calculate authenticity score
+    this.metrics.authenticityScore = this.calculateAuthenticityScore();
+
+    // Detect narrative coherence
+    this.metrics.narrativeCoherence = this.detectNarrativeCoherence();
+
+    // Estimate response window
+    this.metrics.responseWindow = this.estimateResponseWindow();
+
+    // Detect coordinated activity
+    this.metrics.coordinatedActivity = this.detectCoordinatedActivity();
+
+    // Update top hashtags
+    this.metrics.topHashtags = Array.from(this.hashtagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+
+    // Update top keywords
+    this.metrics.topKeywords = Array.from(this.keywordCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
+  }
+
+  /**
+   * Detect velocity spikes
+   */
+  detectSpike() {
+    if (this.metrics.totalPosts < 100) {
+      // Not enough data for baseline
+      this.baselineVelocity = this.metrics.velocity;
+      return;
+    }
+
+    // Update baseline (slow moving average)
+    this.baselineVelocity = this.baselineVelocity * 0.95 + this.metrics.velocity * 0.05;
+
+    // Check if current velocity exceeds threshold
+    if (this.metrics.velocity >= this.baselineVelocity * this.spikeThreshold) {
+      if (!this.spikeDetected) {
+        this.spikeDetected = true;
+        this.spikeStartTime = Date.now();
+        console.log(`🚨 SPIKE DETECTED: ${this.metrics.velocity} posts/min (baseline: ${this.baselineVelocity.toFixed(1)})`);
+      }
+    } else {
+      if (this.spikeDetected) {
+        const duration = (Date.now() - this.spikeStartTime) / 1000 / 60;
+        console.log(`✅ Spike ended after ${duration.toFixed(1)} minutes`);
+      }
+      this.spikeDetected = false;
+    }
+  }
+
+  /**
+   * Calculate virality risk (0-100)
+   */
+  calculateViralityRisk() {
+    let risk = 0;
+
+    // High velocity = higher risk
+    risk += Math.min(this.metrics.velocity / 3, 40);
+
+    // Spike in progress = higher risk
+    if (this.spikeDetected) risk += 20;
+
+    // High engagement = higher risk
+    if (this.metrics.engagementRate > 100) risk += 15;
+
+    // Coordinated activity = higher risk
+    risk += this.metrics.coordinatedActivity * 0.25;
+
+    // Negative sentiment spike = higher risk
+    const totalSentiment =
+      this.metrics.sentiment.positive +
+      this.metrics.sentiment.neutral +
+      this.metrics.sentiment.negative;
+
+    if (totalSentiment > 0) {
+      const negativeRatio = this.metrics.sentiment.negative / totalSentiment;
+      if (negativeRatio > 0.5) risk += 10;
+    }
+
+    return Math.min(Math.round(risk), 100);
+  }
+
+  /**
+   * Calculate authenticity score (0-100)
+   */
+  calculateAuthenticityScore() {
+    let score = 100;
+
+    // High bot percentage = lower score
+    score -= this.metrics.botPercentage * 50;
+
+    // High coordinated activity = lower score
+    score -= this.metrics.coordinatedActivity * 0.3;
+
+    // Very low or very high average followers is suspicious
+    if (this.metrics.avgFollowers < 100) score -= 10;
+    if (this.metrics.avgFollowers > 100000) score -= 5;
+
+    return Math.max(Math.min(Math.round(score), 100), 0);
+  }
+
+  /**
+   * Detect narrative coherence (low/medium/high)
+   */
+  detectNarrativeCoherence() {
+    // Check if hashtags/keywords are converging
+    const topHashtagCount = this.metrics.topHashtags[0]?.count || 0;
+    const totalHashtags = Array.from(this.hashtagCounts.values())
+      .reduce((sum, count) => sum + count, 0);
+
+    if (totalHashtags === 0) return 'low';
+
+    const concentration = topHashtagCount / totalHashtags;
+
+    if (concentration > 0.4) return 'high';
+    if (concentration > 0.2) return 'medium';
+    return 'low';
+  }
+
+  /**
+   * Estimate response window in hours
+   */
+  estimateResponseWindow() {
+    // Based on velocity and virality risk
+    const baseWindow = 6;
+
+    if (this.metrics.velocity > 200) return 0.5;
+    if (this.metrics.velocity > 100) return 2;
+    if (this.metrics.velocity > 50) return 4;
+
+    return baseWindow;
+  }
+
+  /**
+   * Detect coordinated activity (0-100)
+   */
+  detectCoordinatedActivity() {
+    let score = 0;
+
+    // Check for multiple posts from same authors in short time
+    let suspiciousAuthors = 0;
+
+    this.authorActivity.forEach(authorData => {
+      // More than 3 posts in analysis window
+      if (authorData.postCount > 3) {
+        // Average time between posts less than 1 minute
+        if (authorData.avgTimeBetweenPosts < 60000) {
+          suspiciousAuthors++;
+        }
+      }
+    });
+
+    // Calculate percentage of suspicious authors
+    const totalAuthors = this.authorActivity.size;
+    if (totalAuthors > 0) {
+      score = (suspiciousAuthors / totalAuthors) * 100;
+    }
+
+    return Math.min(Math.round(score), 100);
+  }
+
+  /**
+   * Clean up old data
+   */
+  cleanup() {
+    const now = Date.now();
+    const cutoff = now - (this.windowSize * 5); // Keep 5 minutes of history
+
+    // Clean timestamps
+    this.postTimestamps = this.postTimestamps.filter(ts => ts > cutoff);
+
+    // Clean sentiment history
+    this.sentimentHistory = this.sentimentHistory.filter(s => s.timestamp > cutoff);
+
+    // Clean author activity
+    this.authorActivity.forEach((data, authorId) => {
+      data.posts = data.posts.filter(ts => ts > cutoff);
+      if (data.posts.length === 0) {
+        this.authorActivity.delete(authorId);
+      }
+    });
+  }
+
+  /**
+   * Start cleanup interval
+   */
+  startCleanup() {
+    setInterval(() => this.cleanup(), 30000); // Every 30 seconds
+  }
+
+  /**
+   * Get current metrics
+   */
+  getMetrics() {
+    return { ...this.metrics };
+  }
+
+  /**
+   * Reset all metrics
+   */
+  reset() {
+    this.postTimestamps = [];
+    this.sentimentHistory = [];
+    this.hashtagCounts.clear();
+    this.keywordCounts.clear();
+    this.authorActivity.clear();
+
+    this.metrics = {
+      totalPosts: 0,
+      postsPerMinute: 0,
+      velocity: 0,
+      sentiment: { positive: 0, neutral: 0, negative: 0 },
+      viralityRisk: 0,
+      authenticityScore: 100,
+      narrativeCoherence: 'low',
+      responseWindow: 6,
+      engagementRate: 0,
+      coordinatedActivity: 0,
+      topHashtags: [],
+      topKeywords: [],
+      avgFollowers: 0,
+      botPercentage: 0
+    };
+  }
+}
+
+export default AnalyticsEngine;
