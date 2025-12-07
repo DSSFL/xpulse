@@ -73,14 +73,11 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-4 xl:px-6">
         <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-x-gray-light flex items-center justify-center overflow-hidden">
-            {/* Generic male profile silhouette */}
-            <svg className="w-10 h-10 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
+          <div className="w-8 h-8 flex items-center justify-center">
+            <span className="text-x-white font-bold text-2xl">X</span>
           </div>
           <span className="hidden xl:block text-x-white font-bold text-xl">
-            XPulse
+            Pulse
           </span>
         </Link>
       </div>
@@ -148,6 +145,31 @@ export default function Sidebar() {
           <p className="hidden xl:block text-[10px] text-x-gray-text mt-1">
             47/60 requests remaining
           </p>
+        </div>
+
+        {/* User Profile - X Style */}
+        <div className="mt-4 p-3 rounded-full hover:bg-x-gray-dark transition-colors cursor-pointer">
+          <div className="flex items-center gap-3">
+            {/* Profile Photo */}
+            <div className="w-10 h-10 rounded-full bg-x-gray-light flex items-center justify-center overflow-hidden flex-shrink-0">
+              <svg className="w-10 h-10 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </div>
+            {/* Name and Handle */}
+            <div className="hidden xl:block flex-1 min-w-0">
+              <p className="text-x-white font-bold text-sm truncate">XPulse Admin</p>
+              <p className="text-x-gray-text text-sm truncate">@XPulseAdmin</p>
+            </div>
+            {/* Three dots menu */}
+            <div className="hidden xl:block">
+              <svg className="w-5 h-5 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2"/>
+                <circle cx="12" cy="12" r="2"/>
+                <circle cx="19" cy="12" r="2"/>
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
