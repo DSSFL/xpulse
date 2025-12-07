@@ -7,6 +7,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import { AnalyticsEngine } from './analytics.js';
 import { analyzeUserWithGrok } from './grok.js';
 import { UserActivityMonitor } from './userMonitor.js';
+import { xApiErrorHandler } from './xApiErrorHandler.js';
 
 dotenv.config();
 
@@ -51,13 +52,22 @@ async function fetchRealPosts() {
     // Note: API still uses 'is:retweet' even though UI calls them "reposts"
     const searchQuery = '(tech OR AI OR crypto OR bitcoin OR market OR breaking) -is:retweet lang:en';
 
-    const result = await roClient.v2.search(searchQuery, {
-      max_results: 10,
-      'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'geo'],
-      'user.fields': ['username', 'name', 'profile_image_url', 'verified', 'created_at', 'location', 'public_metrics'],
-      expansions: ['author_id', 'geo.place_id'],
-      'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
-    });
+    // Use error handler with automatic retry
+    const result = await xApiErrorHandler.executeWithRetry(
+      'search-recent',
+      () => roClient.v2.search(searchQuery, {
+        max_results: 10,
+        'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'geo'],
+        'user.fields': ['username', 'name', 'profile_image_url', 'verified', 'created_at', 'location', 'public_metrics'],
+        expansions: ['author_id', 'geo.place_id'],
+        'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
+      }),
+      {
+        maxRetries: 3,
+        baseDelay: 2000,
+        maxDelay: 60000
+      }
+    );
 
     // Check if we have posts
     if (!result || !result.data || !result.data.data) {

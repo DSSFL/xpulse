@@ -23,6 +23,10 @@ export class AnalyticsEngine {
     this.countryCounts = new Map();
     this.regionCounts = new Map();
 
+    // NEW: US County-level bot farm tracking
+    this.usCountyData = new Map(); // county_fips -> detailed data
+    this.usStateData = new Map();  // state_code -> aggregated data
+
     // Metrics
     this.metrics = {
       totalPosts: 0,
@@ -56,7 +60,11 @@ export class AnalyticsEngine {
       topCountries: [],
       topRegions: [],
       geoDistribution: {},
-      geoSentiment: {}
+      geoSentiment: {},
+      // NEW: US County bot farm metrics
+      usCountyBotFarms: [],
+      usStateBotFarms: [],
+      usHeatMapData: {}
     };
 
     // Spike detection
@@ -204,9 +212,90 @@ export class AnalyticsEngine {
       regionCount.count++;
       regionCount[sentiment]++;
       this.regionCounts.set(region, regionCount);
+
+      // NEW: Track US county-level data for bot farm detection
+      if (post.place.country_code === 'US' && post.place.full_name) {
+        this.trackUSCountyData(post, sentiment, now);
+      }
     }
 
     return this.metrics;
+  }
+
+  /**
+   * NEW: Track US county-level data for bot farm heat map
+   */
+  trackUSCountyData(post, sentiment, timestamp) {
+    const fullName = post.place.full_name;
+    const placeType = post.place.place_type;
+
+    // Parse location: "San Francisco, CA" or "Los Angeles County, CA"
+    const parts = fullName.split(',').map(p => p.trim());
+    if (parts.length < 2) return;
+
+    const location = parts[0]; // City or County name
+    const stateCode = parts[parts.length - 1]; // State abbreviation
+
+    // Calculate account age for bot detection
+    let accountAgeDays = null;
+    if (post.author.account_created_at) {
+      const accountCreated = new Date(post.author.account_created_at);
+      accountAgeDays = (timestamp - accountCreated.getTime()) / (1000 * 60 * 60 * 24);
+    }
+
+    // Track by state
+    if (!this.usStateData.has(stateCode)) {
+      this.usStateData.set(stateCode, {
+        stateCode,
+        posts: [],
+        totalPosts: 0,
+        newAccounts: 0, // <30 days
+        veryNewAccounts: 0, // <7 days
+        avgAccountAge: 0,
+        sentiment: { positive: 0, neutral: 0, negative: 0 },
+        suspicionScore: 0
+      });
+    }
+
+    const stateData = this.usStateData.get(stateCode);
+    stateData.totalPosts++;
+    stateData.sentiment[sentiment]++;
+    stateData.posts.push({ timestamp, accountAgeDays, sentiment });
+
+    if (accountAgeDays !== null) {
+      if (accountAgeDays < 30) stateData.newAccounts++;
+      if (accountAgeDays < 7) stateData.veryNewAccounts++;
+    }
+
+    // Track by county/city
+    const locationKey = `${location}, ${stateCode}`;
+    if (!this.usCountyData.has(locationKey)) {
+      this.usCountyData.set(locationKey, {
+        location,
+        stateCode,
+        fullName: locationKey,
+        placeType,
+        posts: [],
+        totalPosts: 0,
+        newAccounts: 0,
+        veryNewAccounts: 0,
+        avgAccountAge: 0,
+        sentiment: { positive: 0, neutral: 0, negative: 0 },
+        botFarmScore: 0,
+        lastActivity: timestamp
+      });
+    }
+
+    const countyData = this.usCountyData.get(locationKey);
+    countyData.totalPosts++;
+    countyData.sentiment[sentiment]++;
+    countyData.lastActivity = timestamp;
+    countyData.posts.push({ timestamp, accountAgeDays, sentiment, authorId: post.author.id });
+
+    if (accountAgeDays !== null) {
+      if (accountAgeDays < 30) countyData.newAccounts++;
+      if (accountAgeDays < 7) countyData.veryNewAccounts++;
+    }
   }
 
   /**
@@ -550,6 +639,109 @@ export class AnalyticsEngine {
     this.countryCounts.forEach((data, country) => {
       this.metrics.geoSentiment[country] = this.calculateSentimentScore(data);
     });
+
+    // NEW: Calculate US bot farm metrics
+    this.calculateUSBotFarmMetrics();
+  }
+
+  /**
+   * NEW: Calculate bot farm scores for US counties/states
+   */
+  calculateUSBotFarmMetrics() {
+    // Calculate bot farm scores for each county
+    const countyScores = [];
+    this.usCountyData.forEach((data, locationKey) => {
+      const botFarmScore = this.calculateBotFarmScore(data);
+      data.botFarmScore = botFarmScore;
+
+      // Calculate avg account age
+      const accountAges = data.posts.filter(p => p.accountAgeDays !== null).map(p => p.accountAgeDays);
+      data.avgAccountAge = accountAges.length > 0
+        ? Math.round(accountAges.reduce((sum, age) => sum + age, 0) / accountAges.length)
+        : 0;
+
+      countyScores.push({
+        location: data.location,
+        stateCode: data.stateCode,
+        fullName: data.fullName,
+        totalPosts: data.totalPosts,
+        newAccounts: data.newAccounts,
+        veryNewAccounts: data.veryNewAccounts,
+        avgAccountAge: data.avgAccountAge,
+        botFarmScore: botFarmScore,
+        sentiment: data.sentiment,
+        lastActivity: data.lastActivity
+      });
+    });
+
+    // Sort by bot farm score (highest first)
+    this.metrics.usCountyBotFarms = countyScores
+      .filter(c => c.botFarmScore > 20) // Only suspicious locations
+      .sort((a, b) => b.botFarmScore - a.botFarmScore)
+      .slice(0, 20); // Top 20 suspicious locations
+
+    // Calculate state-level scores
+    const stateScores = [];
+    this.usStateData.forEach((data, stateCode) => {
+      const botFarmScore = this.calculateBotFarmScore(data);
+      data.suspicionScore = botFarmScore;
+
+      // Calculate avg account age
+      const accountAges = data.posts.filter(p => p.accountAgeDays !== null).map(p => p.accountAgeDays);
+      data.avgAccountAge = accountAges.length > 0
+        ? Math.round(accountAges.reduce((sum, age) => sum + age, 0) / accountAges.length)
+        : 0;
+
+      stateScores.push({
+        stateCode,
+        totalPosts: data.totalPosts,
+        newAccounts: data.newAccounts,
+        veryNewAccounts: data.veryNewAccounts,
+        avgAccountAge: data.avgAccountAge,
+        botFarmScore: botFarmScore,
+        sentiment: data.sentiment
+      });
+    });
+
+    this.metrics.usStateBotFarms = stateScores
+      .sort((a, b) => b.botFarmScore - a.botFarmScore)
+      .slice(0, 15);
+
+    // Build heat map data (state code -> score)
+    this.metrics.usHeatMapData = {};
+    stateScores.forEach(state => {
+      this.metrics.usHeatMapData[state.stateCode] = state.botFarmScore;
+    });
+  }
+
+  /**
+   * NEW: Calculate bot farm probability score (0-100)
+   */
+  calculateBotFarmScore(data) {
+    if (data.totalPosts === 0) return 0;
+
+    let score = 0;
+
+    // Factor 1: High percentage of new accounts (max 40 points)
+    const newAccountPct = (data.veryNewAccounts / data.totalPosts) * 100;
+    score += Math.min(newAccountPct * 0.8, 40);
+
+    // Factor 2: Very new accounts (<7 days) (max 30 points)
+    const veryNewPct = (data.veryNewAccounts / data.totalPosts) * 100;
+    score += Math.min(veryNewPct, 30);
+
+    // Factor 3: High post velocity from single location (max 20 points)
+    if (data.totalPosts > 10) {
+      score += Math.min((data.totalPosts / 10) * 2, 20);
+    }
+
+    // Factor 4: Negative sentiment clustering (max 10 points)
+    const negativeRatio = data.sentiment.negative / data.totalPosts;
+    if (negativeRatio > 0.5) {
+      score += 10;
+    }
+
+    return Math.min(Math.round(score), 100);
   }
 
   /**

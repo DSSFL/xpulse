@@ -10,6 +10,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import ThreatDetailsModal from '@/components/ThreatDetailsModal';
 import AccountAgeRisk from '@/components/AccountAgeRisk';
 import GeographicAttackMap from '@/components/GeographicAttackMap';
+import USBotFarmHeatMap from '@/components/USBotFarmHeatMap';
 import { EnrichedPost } from '@/types/tweet';
 
 interface Metrics {
@@ -60,6 +61,36 @@ interface Metrics {
   }>;
   geoDistribution?: Record<string, number>;
   geoSentiment?: Record<string, number>;
+  // NEW: US Bot Farm metrics
+  usCountyBotFarms?: Array<{
+    location: string;
+    stateCode: string;
+    fullName: string;
+    totalPosts: number;
+    newAccounts: number;
+    veryNewAccounts: number;
+    avgAccountAge: number;
+    botFarmScore: number;
+    sentiment: {
+      positive: number;
+      neutral: number;
+      negative: number;
+    };
+  }>;
+  usStateBotFarms?: Array<{
+    stateCode: string;
+    totalPosts: number;
+    newAccounts: number;
+    veryNewAccounts: number;
+    avgAccountAge: number;
+    botFarmScore: number;
+    sentiment: {
+      positive: number;
+      neutral: number;
+      negative: number;
+    };
+  }>;
+  usHeatMapData?: Record<string, number>;
 }
 
 export default function LiveDashboard() {
@@ -358,6 +389,19 @@ export default function LiveDashboard() {
               topRegions: metrics.topRegions || [],
               geoDistribution: metrics.geoDistribution || {},
               geoSentiment: metrics.geoSentiment || {}
+            }}
+          />
+        </section>
+      )}
+
+      {/* NEW: US Bot Farm Heat Map Section */}
+      {metrics.usHeatMapData && Object.keys(metrics.usHeatMapData).length > 0 && (
+        <section className="mb-8">
+          <USBotFarmHeatMap
+            metrics={{
+              usCountyBotFarms: metrics.usCountyBotFarms || [],
+              usStateBotFarms: metrics.usStateBotFarms || [],
+              usHeatMapData: metrics.usHeatMapData || {}
             }}
           />
         </section>
