@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import { TwitterApi } from 'twitter-api-v2';
 import pg from 'pg';
 
-dotenv.config({ path: '../../.env.local' });
+dotenv.config({ path: '../.env.local' });
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,7 +29,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// X API Client
+// X API Client - Using Bearer Token for streaming access
 const twitterClient = new TwitterApi(process.env.TWITTER_BEARER_TOKEN);
 
 // Metrics tracking
@@ -64,22 +64,23 @@ async function startTwitterStream() {
   try {
     console.log('🔌 Connecting to X Streaming API...');
 
-    // Set up stream rules
+    // Check if stream rules exist
     const rules = await twitterClient.v2.streamRules();
-    if (rules.data?.length) {
-      await twitterClient.v2.updateStreamRules({
-        delete: { ids: rules.data.map(rule => rule.id) }
-      });
-    }
 
-    // Add initial rules - tracking popular topics
-    await twitterClient.v2.updateStreamRules({
-      add: [
-        { value: 'breaking news lang:en', tag: 'breaking-news' },
-        { value: '#tech OR #AI OR #crypto', tag: 'tech' },
-        { value: 'is:verified has:media', tag: 'verified-media' }
-      ]
-    });
+    // Only add rules if none exist
+    if (!rules.data || rules.data.length === 0) {
+      console.log('📝 No rules found, adding new rules...');
+      await twitterClient.v2.updateStreamRules({
+        add: [
+          { value: 'breaking news lang:en', tag: 'breaking-news' },
+          { value: '#tech OR #AI OR #crypto', tag: 'tech' },
+          { value: 'is:verified has:media', tag: 'verified-media' }
+        ]
+      });
+      console.log('✅ Rules added successfully!');
+    } else {
+      console.log(`✅ Found ${rules.data.length} existing rule(s), using them.`);
+    }
 
     // Start streaming
     const stream = await twitterClient.v2.searchStream({
