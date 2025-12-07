@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 
 interface VitalCardProps {
   title: string;
@@ -12,6 +12,7 @@ interface VitalCardProps {
   trend?: 'up' | 'down' | 'stable';
   children?: ReactNode;
   onClick?: () => void;
+  infoTooltip?: string;
 }
 
 const statusColors = {
@@ -69,8 +70,10 @@ export default function VitalCard({
   trend,
   children,
   onClick,
+  infoTooltip,
 }: VitalCardProps) {
   const colors = statusColors[status];
+  const [showTooltip, setShowTooltip] = useState(false);
 
   return (
     <div
@@ -79,6 +82,30 @@ export default function VitalCard({
         onClick ? 'cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-200' : ''
       }`}
     >
+      {/* Info icon with tooltip */}
+      {infoTooltip && (
+        <div className="absolute top-4 left-4 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowTooltip(!showTooltip);
+            }}
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+            className="w-5 h-5 rounded-full bg-[#2F3336] hover:bg-[#3E4144] flex items-center justify-center transition-colors"
+          >
+            <svg className="w-3 h-3 text-[#71767B]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+          </button>
+          {showTooltip && (
+            <div className="absolute top-7 left-0 w-64 p-3 bg-[#16181C] border border-[#2F3336] rounded-lg shadow-xl z-20">
+              <p className="text-[#E7E9EA] text-xs leading-relaxed">{infoTooltip}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Status indicator dot */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
         {trend && (

@@ -29,17 +29,17 @@ export default function ThreatDetailsModal({
   const getThreatTitle = () => {
     switch (threatType) {
       case 'velocity':
-        return '🚀 Threat Velocity';
+        return 'Spread Rate';
       case 'sentiment':
-        return '⚠️ Sentiment Pressure';
+        return 'Sentiment Balance';
       case 'virality':
-        return '📈 Virality Risk';
+        return 'Viral Potential';
       case 'authenticity':
-        return '🛡️ Authenticity Score';
+        return 'Bot Activity';
       case 'coordination':
-        return '🔗 Coordinated Activity';
+        return 'Time to Peak';
       case 'narrative':
-        return '📊 Narrative Coherence';
+        return 'Message Unity';
       default:
         return 'Threat Details';
     }
@@ -98,17 +98,17 @@ export default function ThreatDetailsModal({
   const getDescription = () => {
     switch (threatType) {
       case 'velocity':
-        return `Showing ${metrics?.postsPerMinute || 0} posts/min. High velocity indicates potential coordinated campaigns or breaking news.`;
+        return `Currently tracking ${metrics?.postsPerMinute || 0} posts per minute. This measures how fast the narrative is spreading across X. Higher rates indicate rapid viral spread, coordinated campaigns, or breaking news. Posts shown below are driving the current spread.`;
       case 'sentiment':
-        return `${((metrics?.sentiment?.negative || 0) / Math.max((metrics?.sentiment?.positive || 0) + (metrics?.sentiment?.neutral || 0) + (metrics?.sentiment?.negative || 0), 1) * 100).toFixed(0)}% negative sentiment. Monitoring for potential crisis or backlash.`;
+        return `${((metrics?.sentiment?.negative || 0) / Math.max((metrics?.sentiment?.positive || 0) + (metrics?.sentiment?.neutral || 0) + (metrics?.sentiment?.negative || 0), 1) * 100).toFixed(0)}% of posts have negative sentiment. This shows the emotional tone of the conversation. High negativity may indicate brewing backlash or crisis. Posts shown below are negative sentiment examples.`;
       case 'virality':
-        return `${metrics?.viralityRisk || 0}% virality risk. Posts showing signs of potential viral spread.`;
+        return `Viral potential score: ${metrics?.viralityRisk || 0}/100. This estimates the likelihood of mainstream media pickup based on engagement velocity, influencer involvement, and share patterns. Posts shown below have the highest engagement.`;
       case 'authenticity':
-        return `${metrics?.authenticityScore || 100}% authentic. Monitoring for bot activity and inauthentic behavior.`;
+        return `Estimated ${100 - (metrics?.authenticityScore || 100)}% bot/coordinated activity. This detects inauthentic behavior via account age, posting patterns, and timing analysis. Posts shown below have the highest bot probability scores.`;
       case 'coordination':
-        return `${metrics?.coordinatedActivity || 0}% coordination detected. Identifying potential coordinated information operations.`;
+        return `Estimated time to peak viral spread. Currently tracking ${metrics?.coordinatedActivity || 0}% coordinated activity. This shows accounts posting similar content at suspiciously similar times - a sign of coordinated campaigns.`;
       case 'narrative':
-        return `${metrics?.narrativeCoherence || 'low'} coherence. Tracking convergence around specific narratives.`;
+        return `Message unity is ${metrics?.narrativeCoherence || 'low'}. This measures how similar the messaging is across posts - high unity with similar keywords and phrases suggests coordinated talking points or viral memes.`;
       default:
         return '';
     }

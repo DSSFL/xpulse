@@ -255,12 +255,13 @@ export default function LiveDashboard() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <VitalCard
-            title="Threat Velocity"
+            title="Spread Rate"
             value={(metrics.postsPerMinute || 0).toString()}
-            unit="mentions/min"
+            unit="posts/min"
             status={(metrics.postsPerMinute || 0) > 100 ? "warning" : "healthy"}
             trend={(metrics.postsPerMinute || 0) > 50 ? "up" : "stable"}
-            subtitle="Speed of negative narrative spread"
+            subtitle="How fast the narrative is spreading"
+            infoTooltip="Measures the velocity of posts mentioning your tracked topics. Higher rates indicate rapid spread - could be breaking news, viral content, or coordinated campaigns. Above 100/min is concerning."
             onClick={() => {
               setSelectedThreat('velocity');
               setModalOpen(true);
@@ -273,12 +274,13 @@ export default function LiveDashboard() {
           />
 
           <VitalCard
-            title="Sentiment Pressure"
-            value={`${metrics?.sentiment?.positive || 68}/${metrics?.sentiment?.negative || 32}`}
+            title="Sentiment Balance"
+            value={`${metrics?.sentiment?.positive || 0}/${metrics?.sentiment?.negative || 0}`}
             unit="pos/neg"
             status={(metrics?.sentiment?.negative || 0) > (metrics?.sentiment?.positive || 0) ? "warning" : "neutral"}
             trend="stable"
-            subtitle="Building tension before eruption"
+            subtitle="Ratio of positive to negative posts"
+            infoTooltip="Shows the balance between positive and negative sentiment in tracked posts. A higher ratio of negative posts may indicate a brewing crisis or backlash. Uses AI sentiment analysis on each post."
             onClick={() => {
               setSelectedThreat('sentiment');
               setModalOpen(true);
@@ -291,12 +293,13 @@ export default function LiveDashboard() {
           />
 
           <VitalCard
-            title="Virality Risk"
+            title="Viral Potential"
             value={viralityRisk.toString()}
             unit="/ 100"
             status={viralityRisk > 75 ? "critical" : viralityRisk > 50 ? "warning" : "neutral"}
             trend={viralityRisk > 60 ? "up" : "stable"}
-            subtitle="Likelihood of mainstream pickup"
+            subtitle="Likelihood of going viral"
+            infoTooltip="Estimates the probability that this narrative will go viral based on engagement velocity, influencer involvement, and share patterns. Above 75 means high risk of mainstream media pickup."
             onClick={() => {
               setSelectedThreat('virality');
               setModalOpen(true);
@@ -310,12 +313,13 @@ export default function LiveDashboard() {
           />
 
           <VitalCard
-            title="Authenticity Score"
-            value={authenticityScore.toString()}
+            title="Bot Activity"
+            value={`${100 - authenticityScore}`}
             unit="%"
-            status={authenticityScore > 80 ? "healthy" : authenticityScore > 50 ? "warning" : "critical"}
+            status={(100 - authenticityScore) > 50 ? "critical" : (100 - authenticityScore) > 20 ? "warning" : "healthy"}
             trend="stable"
-            subtitle="Real users vs bots/coordinated"
+            subtitle="Estimated bot/coordinated posts"
+            infoTooltip="Percentage of posts that appear to come from bots or coordinated accounts. Detected via account age, posting frequency, timing patterns, and behavioral signals. Higher values indicate potential astroturfing."
             onClick={() => {
               setSelectedThreat('authenticity');
               setModalOpen(true);
@@ -328,12 +332,13 @@ export default function LiveDashboard() {
           />
 
           <VitalCard
-            title="Narrative Coherence"
+            title="Message Unity"
             value={narrativeCoherence.charAt(0).toUpperCase() + narrativeCoherence.slice(1)}
             unit=""
             status={narrativeCoherence === "high" ? "critical" : narrativeCoherence === "medium" ? "warning" : "healthy"}
             trend={narrativeCoherence === "high" ? "up" : "stable"}
-            subtitle="Unified story forming?"
+            subtitle="How unified is the messaging?"
+            infoTooltip="Measures how similar the messaging is across posts. High unity suggests coordinated talking points or a viral meme. Detected via keyword clustering, similar phrasing, and shared URLs. High unity + high bot activity = likely coordinated campaign."
             onClick={() => {
               setSelectedThreat('narrative');
               setModalOpen(true);
@@ -346,12 +351,13 @@ export default function LiveDashboard() {
           />
 
           <VitalCard
-            title="Response Window"
+            title="Time to Peak"
             value={`~${responseWindow.toFixed(1)}h`}
-            unit="remaining"
+            unit="estimated"
             status={responseWindow < 2 ? "critical" : responseWindow < 4 ? "warning" : "neutral"}
             trend={responseWindow < 3 ? "down" : "stable"}
-            subtitle="Time before mainstream media pickup"
+            subtitle="Hours until maximum spread"
+            infoTooltip="Estimated time until this narrative reaches peak viral spread based on current velocity and historical patterns. Lower values mean less time to respond. Under 2 hours is critical - requires immediate attention."
             onClick={() => {
               setSelectedThreat('coordination');
               setModalOpen(true);
