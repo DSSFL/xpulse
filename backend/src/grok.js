@@ -3,13 +3,18 @@
  * Provides AI-powered threat intelligence analysis
  */
 
-const GROK_API_KEY = process.env.GROK_API_KEY || '';
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
 /**
  * Analyze user mentions using Grok AI
  */
 export async function analyzeUserWithGrok(handle, posts, metrics) {
+  const GROK_API_KEY = process.env.GROK_API_KEY || '';
+
+  if (!GROK_API_KEY) {
+    throw new Error('GROK_API_KEY is not set in environment variables');
+  }
+
   try {
     console.log(`🤖 [GROK] Analyzing @${handle} with ${posts.length} posts...`);
 
@@ -60,7 +65,7 @@ Be concise but thorough. Focus on actionable insights.`;
             content: prompt
           }
         ],
-        model: 'grok-4-1-fast-reasoning',
+        model: 'grok-3',
         stream: false,
         temperature: 0.3
       })
@@ -149,6 +154,13 @@ function parseGrokAnalysis(analysis, metrics) {
  * Get quick sentiment analysis from Grok (for general monitoring)
  */
 export async function getGrokSentiment(text) {
+  const GROK_API_KEY = process.env.GROK_API_KEY || '';
+
+  if (!GROK_API_KEY) {
+    console.error('❌ [GROK] GROK_API_KEY is not set');
+    return 'neutral';
+  }
+
   try {
     const response = await fetch(GROK_API_URL, {
       method: 'POST',
@@ -167,7 +179,7 @@ export async function getGrokSentiment(text) {
             content: `Analyze sentiment: ${text}`
           }
         ],
-        model: 'grok-3-mini', // Faster, cheaper model
+        model: 'grok-3-mini', // Fast, cheaper model for sentiment
         stream: false,
         temperature: 0
       })

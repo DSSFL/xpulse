@@ -44,6 +44,7 @@ async function fetchRealPosts() {
     console.log('🔍 Fetching real posts from X API v2...');
 
     // Search for recent posts about tech, AI, crypto, markets (trending topics)
+    // Note: API still uses 'is:retweet' even though UI calls them "reposts"
     const searchQuery = '(tech OR AI OR crypto OR bitcoin OR market OR breaking) -is:retweet lang:en';
 
     const result = await roClient.v2.search(searchQuery, {
@@ -126,7 +127,7 @@ async function fetchRealPosts() {
                    (enrichedPost.public_metrics.reply_count || 0)
       });
 
-      console.log(`✅ Broadcasted post from @${author.username}: ${post.text.substring(0, 50)}...`);
+      console.log(`✅ Broadcasted X post from @${author.username}: ${post.text.substring(0, 50)}...`);
     }
 
     // Cleanup old IDs to prevent memory leak (keep last 1000)
@@ -137,7 +138,7 @@ async function fetchRealPosts() {
     }
 
   } catch (error) {
-    console.error('❌ Error fetching posts:', error.message);
+    console.error('❌ Error fetching X posts:', error.message);
     console.error('Error details:', error);
     if (error.code === 429) {
       console.log('⚠️  Rate limit reached. Waiting before next request...');
@@ -145,7 +146,7 @@ async function fetchRealPosts() {
   }
 }
 
-// Start real post stream
+// Start real X post stream
 function startRealPostStream() {
   console.log('🚀 Starting REAL X API v2 post stream with ADVANCED ANALYTICS...');
   console.log('📡 Using bearer token authentication');
@@ -199,6 +200,7 @@ io.on('connection', (socket) => {
 
     try {
       // Search for mentions of the user
+      // Note: API still uses 'is:retweet' even though UI calls them "reposts"
       const searchQuery = `@${handle} -is:retweet lang:en`;
       const result = await roClient.v2.search(searchQuery, {
         max_results: 100,
