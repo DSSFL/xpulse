@@ -95,7 +95,7 @@ export default function Home() {
               Real-Time Threat Intelligence for X
             </h2>
             <p className="text-xl text-x-gray-text">
-              AI-powered monitoring of your X presence. Track threats, sentiment, and narratives in real-time.
+              Grok-powered monitoring of your X presence. Track threats, sentiment, and narratives in real-time.
             </p>
           </div>
 
