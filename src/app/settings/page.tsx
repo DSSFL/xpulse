@@ -7,17 +7,6 @@ interface UserSettings {
   handle: string;
   bio: string;
   profilePicture: string;
-  topics: string;
-  notifications: {
-    criticalAlerts: boolean;
-    mentionAlerts: boolean;
-    dailyDigest: boolean;
-    sentimentShifts: boolean;
-  };
-  privacy: {
-    publicProfile: boolean;
-    shareAnalytics: boolean;
-  };
   display: {
     theme: 'dark' | 'light';
     compactMode: boolean;
@@ -27,23 +16,12 @@ interface UserSettings {
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'tracking' | 'notifications' | 'privacy' | 'display'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'display'>('profile');
   const [settings, setSettings] = useState<UserSettings>({
     name: 'XPulse Admin',
     handle: '@XPulseAdmin',
     bio: 'Monitoring threats and narratives in real-time',
     profilePicture: '',
-    topics: '',
-    notifications: {
-      criticalAlerts: true,
-      mentionAlerts: true,
-      dailyDigest: false,
-      sentimentShifts: true,
-    },
-    privacy: {
-      publicProfile: false,
-      shareAnalytics: false,
-    },
     display: {
       theme: 'dark',
       compactMode: false,
@@ -56,7 +34,6 @@ export default function SettingsPage() {
   // Load settings from localStorage on mount
   useEffect(() => {
     const savedHandle = localStorage.getItem('xpulse_handle');
-    const savedTopics = localStorage.getItem('xpulse_topics');
     const savedName = localStorage.getItem('xpulse_name');
     const savedBio = localStorage.getItem('xpulse_bio');
     const savedProfilePicture = localStorage.getItem('xpulse_profile_picture');
@@ -69,9 +46,6 @@ export default function SettingsPage() {
 
     if (savedHandle) {
       setSettings(prev => ({ ...prev, handle: savedHandle.startsWith('@') ? savedHandle : `@${savedHandle}` }));
-    }
-    if (savedTopics) {
-      setSettings(prev => ({ ...prev, topics: savedTopics }));
     }
     if (savedName) {
       setSettings(prev => ({ ...prev, name: savedName }));
@@ -90,15 +64,12 @@ export default function SettingsPage() {
 
     // Save to localStorage
     localStorage.setItem('xpulse_handle', settings.handle.replace('@', ''));
-    localStorage.setItem('xpulse_topics', settings.topics);
     localStorage.setItem('xpulse_name', settings.name);
     localStorage.setItem('xpulse_bio', settings.bio);
     if (settings.profilePicture) {
       localStorage.setItem('xpulse_profile_picture', settings.profilePicture);
     }
     localStorage.setItem('xpulse_settings', JSON.stringify({
-      notifications: settings.notifications,
-      privacy: settings.privacy,
       display: settings.display,
     }));
 
@@ -142,9 +113,6 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'profile' as const, name: 'Profile', icon: '👤' },
-    { id: 'tracking' as const, name: 'Tracking', icon: '🎯' },
-    { id: 'notifications' as const, name: 'Notifications', icon: '🔔' },
-    { id: 'privacy' as const, name: 'Privacy', icon: '🔒' },
     { id: 'display' as const, name: 'Display', icon: '🎨' },
   ];
 
@@ -278,238 +246,6 @@ export default function SettingsPage() {
                       className="w-full px-4 py-3 rounded-xl bg-x-gray-light border border-x-gray-border text-x-white placeholder-x-gray-text focus:outline-none focus:border-pulse-blue focus:ring-2 focus:ring-pulse-blue/20 transition-all resize-none"
                     />
                     <p className="text-x-gray-text text-sm mt-2">{settings.bio.length}/160 characters</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Tracking Tab */}
-              {activeTab === 'tracking' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-x-white mb-4">Tracking Settings</h2>
-                    <p className="text-x-gray-text mb-6">Configure what XPulse monitors for you</p>
-                  </div>
-
-                  {/* Topics */}
-                  <div>
-                    <label className="block text-x-white font-medium mb-2">Topics to Track</label>
-                    <input
-                      type="text"
-                      value={settings.topics}
-                      onChange={(e) => setSettings(prev => ({ ...prev, topics: e.target.value }))}
-                      placeholder="AI, crypto, tech news, breaking news..."
-                      className="w-full px-4 py-3 rounded-xl bg-x-gray-light border border-x-gray-border text-x-white placeholder-x-gray-text focus:outline-none focus:border-pulse-green focus:ring-2 focus:ring-pulse-green/20 transition-all"
-                    />
-                    <p className="text-x-gray-text text-sm mt-2">Separate topics with commas. Grok AI will find relevant posts.</p>
-                  </div>
-
-                  {/* Tracking Info */}
-                  <div className="bg-x-gray/50 border border-x-gray-border rounded-xl p-6">
-                    <h3 className="text-x-white font-medium mb-4">What We Track</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-pulse-blue mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <div>
-                          <p className="text-x-white font-medium">Mentions & Replies</p>
-                          <p className="text-x-gray-text text-sm">Track when people mention or reply to your handle</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-pulse-blue mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <div>
-                          <p className="text-x-white font-medium">Topic Monitoring</p>
-                          <p className="text-x-gray-text text-sm">Real-time tracking of your chosen topics across X</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-pulse-blue mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <div>
-                          <p className="text-x-white font-medium">Sentiment Analysis</p>
-                          <p className="text-x-gray-text text-sm">AI-powered sentiment tracking of all mentions</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-pulse-blue mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <div>
-                          <p className="text-x-white font-medium">Threat Detection</p>
-                          <p className="text-x-gray-text text-sm">Automatic detection of potential coordinated attacks</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Notifications Tab */}
-              {activeTab === 'notifications' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-x-white mb-4">Notification Settings</h2>
-                    <p className="text-x-gray-text mb-6">Choose when and how you want to be notified</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Critical Alerts */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Critical Alerts</p>
-                        <p className="text-x-gray-text text-sm">Notify when threats reach critical levels</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, criticalAlerts: !prev.notifications.criticalAlerts }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.notifications.criticalAlerts ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.notifications.criticalAlerts ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-
-                    {/* Mention Alerts */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Mention Alerts</p>
-                        <p className="text-x-gray-text text-sm">Get notified when someone mentions you</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, mentionAlerts: !prev.notifications.mentionAlerts }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.notifications.mentionAlerts ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.notifications.mentionAlerts ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-
-                    {/* Daily Digest */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Daily Digest</p>
-                        <p className="text-x-gray-text text-sm">Receive a summary of your daily activity</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, dailyDigest: !prev.notifications.dailyDigest }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.notifications.dailyDigest ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.notifications.dailyDigest ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-
-                    {/* Sentiment Shifts */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Sentiment Shifts</p>
-                        <p className="text-x-gray-text text-sm">Alert on sudden sentiment changes</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, sentimentShifts: !prev.notifications.sentimentShifts }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.notifications.sentimentShifts ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.notifications.sentimentShifts ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Privacy Tab */}
-              {activeTab === 'privacy' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-x-white mb-4">Privacy Settings</h2>
-                    <p className="text-x-gray-text mb-6">Control your data and visibility</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Public Profile */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Public Profile</p>
-                        <p className="text-x-gray-text text-sm">Allow others to view your XPulse profile</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          privacy: { ...prev.privacy, publicProfile: !prev.privacy.publicProfile }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.privacy.publicProfile ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.privacy.publicProfile ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-
-                    {/* Share Analytics */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Share Analytics</p>
-                        <p className="text-x-gray-text text-sm">Help improve XPulse with anonymous analytics</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          privacy: { ...prev.privacy, shareAnalytics: !prev.privacy.shareAnalytics }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.privacy.shareAnalytics ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.privacy.shareAnalytics ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Data Management */}
-                  <div className="mt-8 p-6 rounded-xl bg-vital-critical/5 border border-vital-critical/20">
-                    <h3 className="text-x-white font-medium mb-4">Data Management</h3>
-                    <div className="space-y-3">
-                      <button className="w-full px-4 py-3 rounded-lg bg-x-gray-light text-x-white hover:bg-x-gray-border transition-colors text-left">
-                        Download My Data
-                      </button>
-                      <button className="w-full px-4 py-3 rounded-lg bg-x-gray-light text-x-white hover:bg-x-gray-border transition-colors text-left">
-                        Clear Cache
-                      </button>
-                      <button className="w-full px-4 py-3 rounded-lg bg-vital-critical/20 text-vital-critical hover:bg-vital-critical/30 transition-colors text-left">
-                        Delete Account
-                      </button>
-                    </div>
                   </div>
                 </div>
               )}
