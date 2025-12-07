@@ -109,8 +109,10 @@ export class UserActivityMonitor {
       try {
         const userTweets = await this.client.v2.userTimeline(userId, {
           max_results: 10,
-          'tweet.fields': ['created_at', 'public_metrics', 'referenced_tweets', 'entities'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url']
+          'tweet.fields': ['created_at', 'public_metrics', 'referenced_tweets', 'entities', 'geo'],
+          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+          expansions: ['geo.place_id'],
+          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
         });
 
         if (userTweets.data?.data) {
@@ -129,9 +131,10 @@ export class UserActivityMonitor {
       try {
         const mentions = await this.client.v2.search(`@${username} -from:${username} -is:retweet lang:en`, {
           max_results: 20,
-          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
-          expansions: ['author_id']
+          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets', 'geo'],
+          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+          expansions: ['author_id', 'geo.place_id'],
+          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
         });
 
         if (mentions.data?.data) {
@@ -150,9 +153,10 @@ export class UserActivityMonitor {
       try {
         const replies = await this.client.v2.search(`to:${username} -from:${username} -is:retweet lang:en`, {
           max_results: 20,
-          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
-          expansions: ['author_id']
+          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'referenced_tweets', 'geo'],
+          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+          expansions: ['author_id', 'geo.place_id'],
+          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
         });
 
         if (replies.data?.data) {
@@ -233,6 +237,17 @@ export class UserActivityMonitor {
       profile_image_url: null
     };
 
+    // Get place info from includes
+    const places = {};
+    if (includes?.places) {
+      includes.places.forEach(place => {
+        places[place.id] = place;
+      });
+    }
+
+    const placeId = tweet.geo?.place_id;
+    const place = placeId ? places[placeId] : null;
+
     // Analyze sentiment
     const sentiment = this.analytics.analyzeSentiment(tweet.text);
 
@@ -245,7 +260,9 @@ export class UserActivityMonitor {
         username: author.username,
         name: author.name,
         verified: author.verified || false,
-        profile_image_url: upgradeProfileImageUrl(author.profile_image_url)
+        profile_image_url: upgradeProfileImageUrl(author.profile_image_url),
+        account_created_at: author.created_at || null,
+        location: author.location || null
       },
       public_metrics: {
         like_count: tweet.public_metrics?.like_count || 0,
@@ -254,6 +271,15 @@ export class UserActivityMonitor {
         quote_count: tweet.public_metrics?.quote_count || 0,
         impression_count: tweet.public_metrics?.impression_count || 0
       },
+      geo: tweet.geo || null,
+      place: place ? {
+        id: place.id,
+        full_name: place.full_name,
+        country: place.country,
+        country_code: place.country_code,
+        place_type: place.place_type,
+        geo: place.geo
+      } : null,
       sentiment,
       engagement: (tweet.public_metrics?.like_count || 0) +
                  (tweet.public_metrics?.retweet_count || 0) +

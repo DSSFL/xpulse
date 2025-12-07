@@ -53,9 +53,10 @@ async function fetchRealPosts() {
 
     const result = await roClient.v2.search(searchQuery, {
       max_results: 10,
-      'tweet.fields': ['created_at', 'public_metrics', 'author_id'],
-      'user.fields': ['username', 'name', 'profile_image_url', 'verified'],
-      expansions: ['author_id']
+      'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'geo'],
+      'user.fields': ['username', 'name', 'profile_image_url', 'verified', 'created_at', 'location', 'public_metrics'],
+      expansions: ['author_id', 'geo.place_id'],
+      'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
     });
 
     // Check if we have posts
@@ -69,6 +70,14 @@ async function fetchRealPosts() {
     if (result.includes?.users) {
       result.includes.users.forEach(user => {
         users[user.id] = user;
+      });
+    }
+
+    // Extract places map
+    const places = {};
+    if (result.includes?.places) {
+      result.includes.places.forEach(place => {
+        places[place.id] = place;
       });
     }
 
@@ -91,6 +100,10 @@ async function fetchRealPosts() {
         verified: false
       };
 
+      // Get place info if available
+      const placeId = post.geo?.place_id;
+      const place = placeId ? places[placeId] : null;
+
       // Create enriched post
       const enrichedPost = {
         id: post.id,
@@ -104,7 +117,9 @@ async function fetchRealPosts() {
           verified: author.verified || false,
           followers_count: author.public_metrics?.followers_count || 0,
           following_count: author.public_metrics?.following_count || 0,
-          post_count: author.public_metrics?.tweet_count || 0
+          post_count: author.public_metrics?.tweet_count || 0,
+          account_created_at: author.created_at || null,
+          location: author.location || null
         },
         public_metrics: {
           like_count: post.public_metrics?.like_count || 0,
@@ -113,6 +128,15 @@ async function fetchRealPosts() {
           quote_count: post.public_metrics?.quote_count || 0,
           impression_count: post.public_metrics?.impression_count || 0
         },
+        geo: post.geo || null,
+        place: place ? {
+          id: place.id,
+          full_name: place.full_name,
+          country: place.country,
+          country_code: place.country_code,
+          place_type: place.place_type,
+          geo: place.geo
+        } : null,
         bot_probability: 0 // Will be calculated by analytics
       };
 
@@ -248,9 +272,10 @@ io.on('connection', (socket) => {
         const result = await roClient.v2.search(searchQuery, {
           max_results: POSTS_PER_REQUEST,
           next_token: nextToken,
-          'tweet.fields': ['created_at', 'public_metrics', 'author_id'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
-          'expansions': ['author_id']
+          'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'geo'],
+          'user.fields': ['username', 'name', 'verified', 'profile_image_url', 'created_at', 'location', 'public_metrics'],
+          'expansions': ['author_id', 'geo.place_id'],
+          'place.fields': ['full_name', 'country', 'country_code', 'geo', 'place_type']
         });
 
         // Build user map
@@ -260,9 +285,19 @@ io.on('connection', (socket) => {
           });
         }
 
+        // Build places map
+        const placeMap = {};
+        if (result.includes?.places) {
+          result.includes.places.forEach(place => {
+            placeMap[place.id] = place;
+          });
+        }
+
         // Process posts from this batch
         for (const post of result.data?.data || []) {
           const author = userMap[post.author_id] || { username: 'unknown', name: 'Unknown' };
+          const placeId = post.geo?.place_id;
+          const place = placeId ? placeMap[placeId] : null;
 
           const enrichedPost = {
             id: post.id,
@@ -273,7 +308,9 @@ io.on('connection', (socket) => {
               name: author.name,
               username: author.username,
               verified: author.verified || false,
-              profile_image_url: author.profile_image_url
+              profile_image_url: author.profile_image_url,
+              account_created_at: author.created_at || null,
+              location: author.location || null
             },
             public_metrics: {
               like_count: post.public_metrics?.like_count || 0,
@@ -282,6 +319,15 @@ io.on('connection', (socket) => {
               quote_count: post.public_metrics?.quote_count || 0,
               impression_count: post.public_metrics?.impression_count || 0
             },
+            geo: post.geo || null,
+            place: place ? {
+              id: place.id,
+              full_name: place.full_name,
+              country: place.country,
+              country_code: place.country_code,
+              place_type: place.place_type,
+              geo: place.geo
+            } : null,
             sentiment: analytics.analyzeSentiment(post.text),
             engagement: (post.public_metrics?.like_count || 0) + (post.public_metrics?.retweet_count || 0),
             bot_probability: Math.random() * 0.3, // Simple bot detection

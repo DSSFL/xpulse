@@ -8,6 +8,8 @@ import SentimentGauge from '@/components/SentimentGauge';
 import GlobalHeatMap from '@/components/GlobalHeatMap';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ThreatDetailsModal from '@/components/ThreatDetailsModal';
+import AccountAgeRisk from '@/components/AccountAgeRisk';
+import GeographicAttackMap from '@/components/GeographicAttackMap';
 import { EnrichedPost } from '@/types/tweet';
 
 interface Metrics {
@@ -28,6 +30,36 @@ interface Metrics {
   coordinatedActivity?: number;
   topHashtags?: Array<{ tag: string; count: number }>;
   topKeywords?: Array<{ word: string; count: number }>;
+  // NEW: Account age metrics
+  accountAgeRisk?: number;
+  accountAgeDistribution?: {
+    under7days: number;
+    days7to30: number;
+    days30to180: number;
+    over180days: number;
+  };
+  averageAccountAge?: number;
+  // NEW: Geographic metrics
+  topCountries?: Array<{
+    country: string;
+    count: number;
+    positive: number;
+    neutral: number;
+    negative: number;
+    sentiment_score: number;
+  }>;
+  topRegions?: Array<{
+    region: string;
+    country: string;
+    country_code: string;
+    count: number;
+    positive: number;
+    neutral: number;
+    negative: number;
+    sentiment_score: number;
+  }>;
+  geoDistribution?: Record<string, number>;
+  geoSentiment?: Record<string, number>;
 }
 
 export default function LiveDashboard() {
@@ -302,8 +334,34 @@ export default function LiveDashboard() {
               </svg>
             }
           />
+
+          {/* NEW: Account Age Risk */}
+          {metrics.accountAgeRisk !== undefined && metrics.accountAgeDistribution && (
+            <AccountAgeRisk
+              accountAgeRisk={metrics.accountAgeRisk}
+              accountAgeDistribution={metrics.accountAgeDistribution}
+              averageAccountAge={metrics.averageAccountAge || 0}
+              onClick={() => {
+                // Could add modal for detailed account age analysis
+              }}
+            />
+          )}
         </div>
       </section>
+
+      {/* NEW: Geographic Attack Map Section */}
+      {metrics.topCountries && metrics.topCountries.length > 0 && (
+        <section className="mb-8">
+          <GeographicAttackMap
+            metrics={{
+              topCountries: metrics.topCountries || [],
+              topRegions: metrics.topRegions || [],
+              geoDistribution: metrics.geoDistribution || {},
+              geoSentiment: metrics.geoSentiment || {}
+            }}
+          />
+        </section>
+      )}
 
       {/* Sentiment & Origin Analysis Section */}
       <section className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -14,6 +14,15 @@ export class AnalyticsEngine {
     this.keywordCounts = new Map();
     this.authorActivity = new Map();
 
+    // NEW: Account age tracking
+    this.accountAges = [];
+    this.accountLocations = new Map();
+
+    // NEW: Geographic tracking
+    this.geoData = [];
+    this.countryCounts = new Map();
+    this.regionCounts = new Map();
+
     // Metrics
     this.metrics = {
       totalPosts: 0,
@@ -33,7 +42,21 @@ export class AnalyticsEngine {
       topHashtags: [],
       topKeywords: [],
       avgFollowers: 0,
-      botPercentage: 0
+      botPercentage: 0,
+      // NEW: Account age metrics
+      accountAgeRisk: 0,
+      accountAgeDistribution: {
+        under7days: 0,
+        days7to30: 0,
+        days30to180: 0,
+        over180days: 0
+      },
+      averageAccountAge: 0,
+      // NEW: Geographic metrics
+      topCountries: [],
+      topRegions: [],
+      geoDistribution: {},
+      geoSentiment: {}
     };
 
     // Spike detection
@@ -125,6 +148,63 @@ export class AnalyticsEngine {
     this.metrics.avgFollowers =
       (this.metrics.avgFollowers * (this.metrics.totalPosts - 1) + (post.author.followers_count || 0)) /
       this.metrics.totalPosts;
+
+    // NEW: Track account age
+    if (post.author.account_created_at) {
+      const accountCreated = new Date(post.author.account_created_at);
+      const accountAgeDays = (now - accountCreated.getTime()) / (1000 * 60 * 60 * 24);
+      this.accountAges.push({
+        ageDays: accountAgeDays,
+        timestamp: now,
+        sentiment: sentiment
+      });
+    }
+
+    // NEW: Track location string (for location clustering analysis)
+    if (post.author.location) {
+      const location = post.author.location.toLowerCase().trim();
+      const count = this.accountLocations.get(location) || 0;
+      this.accountLocations.set(location, count + 1);
+    }
+
+    // NEW: Track geographic data
+    if (post.place) {
+      this.geoData.push({
+        country: post.place.country,
+        country_code: post.place.country_code,
+        full_name: post.place.full_name,
+        place_type: post.place.place_type,
+        sentiment: sentiment,
+        timestamp: now,
+        geo: post.place.geo
+      });
+
+      // Count by country
+      const country = post.place.country || post.place.country_code || 'Unknown';
+      const countryCount = this.countryCounts.get(country) || {
+        count: 0,
+        positive: 0,
+        neutral: 0,
+        negative: 0
+      };
+      countryCount.count++;
+      countryCount[sentiment]++;
+      this.countryCounts.set(country, countryCount);
+
+      // Count by region/full name
+      const region = post.place.full_name || 'Unknown';
+      const regionCount = this.regionCounts.get(region) || {
+        count: 0,
+        positive: 0,
+        neutral: 0,
+        negative: 0,
+        country: country,
+        country_code: post.place.country_code
+      };
+      regionCount.count++;
+      regionCount[sentiment]++;
+      this.regionCounts.set(region, regionCount);
+    }
 
     return this.metrics;
   }
@@ -219,6 +299,12 @@ export class AnalyticsEngine {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([word, count]) => ({ word, count }));
+
+    // NEW: Calculate account age metrics
+    this.calculateAccountAgeMetrics();
+
+    // NEW: Calculate geographic metrics
+    this.calculateGeographicMetrics();
   }
 
   /**
@@ -362,6 +448,120 @@ export class AnalyticsEngine {
   }
 
   /**
+   * NEW: Calculate account age metrics and risk score
+   */
+  calculateAccountAgeMetrics() {
+    if (this.accountAges.length === 0) {
+      this.metrics.accountAgeRisk = 0;
+      this.metrics.averageAccountAge = 0;
+      return;
+    }
+
+    // Filter to recent window
+    const now = Date.now();
+    const oneMinuteAgo = now - this.windowSize;
+    const recentAges = this.accountAges.filter(a => a.timestamp > oneMinuteAgo);
+
+    if (recentAges.length === 0) {
+      this.metrics.accountAgeRisk = 0;
+      this.metrics.averageAccountAge = 0;
+      return;
+    }
+
+    // Calculate distribution
+    let under7 = 0;
+    let days7to30 = 0;
+    let days30to180 = 0;
+    let over180 = 0;
+    let totalAge = 0;
+
+    recentAges.forEach(({ ageDays }) => {
+      totalAge += ageDays;
+      if (ageDays < 7) under7++;
+      else if (ageDays < 30) days7to30++;
+      else if (ageDays < 180) days30to180++;
+      else over180++;
+    });
+
+    const total = recentAges.length;
+    this.metrics.accountAgeDistribution = {
+      under7days: Math.round((under7 / total) * 100),
+      days7to30: Math.round((days7to30 / total) * 100),
+      days30to180: Math.round((days30to180 / total) * 100),
+      over180days: Math.round((over180 / total) * 100)
+    };
+
+    this.metrics.averageAccountAge = Math.round(totalAge / total);
+
+    // Calculate risk score (0-100)
+    // High % of new accounts = high risk (bot indicator)
+    let risk = 0;
+    risk += (under7 / total) * 50;  // <7 days = 50% of risk
+    risk += (days7to30 / total) * 30; // 7-30 days = 30% of risk
+    risk += (days30to180 / total) * 10; // 30-180 days = 10% of risk
+
+    // Very low average age is suspicious
+    if (this.metrics.averageAccountAge < 30) risk += 20;
+    else if (this.metrics.averageAccountAge < 90) risk += 10;
+
+    this.metrics.accountAgeRisk = Math.min(Math.round(risk), 100);
+  }
+
+  /**
+   * NEW: Calculate geographic metrics
+   */
+  calculateGeographicMetrics() {
+    // Top countries
+    this.metrics.topCountries = Array.from(this.countryCounts.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 10)
+      .map(([country, data]) => ({
+        country,
+        count: data.count,
+        positive: data.positive,
+        neutral: data.neutral,
+        negative: data.negative,
+        sentiment_score: this.calculateSentimentScore(data)
+      }));
+
+    // Top regions
+    this.metrics.topRegions = Array.from(this.regionCounts.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 15)
+      .map(([region, data]) => ({
+        region,
+        country: data.country,
+        country_code: data.country_code,
+        count: data.count,
+        positive: data.positive,
+        neutral: data.neutral,
+        negative: data.negative,
+        sentiment_score: this.calculateSentimentScore(data)
+      }));
+
+    // Build geo distribution for heat map
+    this.metrics.geoDistribution = {};
+    this.countryCounts.forEach((data, country) => {
+      this.metrics.geoDistribution[country] = data.count;
+    });
+
+    // Build geo sentiment map
+    this.metrics.geoSentiment = {};
+    this.countryCounts.forEach((data, country) => {
+      this.metrics.geoSentiment[country] = this.calculateSentimentScore(data);
+    });
+  }
+
+  /**
+   * Helper: Calculate sentiment score (-1 to 1)
+   */
+  calculateSentimentScore(data) {
+    const total = data.positive + data.neutral + data.negative;
+    if (total === 0) return 0;
+    return ((data.positive - data.negative) / total).toFixed(2);
+  }
+
+  /**
    * Clean up old data
    */
   cleanup() {
@@ -381,6 +581,12 @@ export class AnalyticsEngine {
         this.authorActivity.delete(authorId);
       }
     });
+
+    // NEW: Clean account ages
+    this.accountAges = this.accountAges.filter(a => a.timestamp > cutoff);
+
+    // NEW: Clean geo data
+    this.geoData = this.geoData.filter(g => g.timestamp > cutoff);
   }
 
   /**
@@ -406,6 +612,11 @@ export class AnalyticsEngine {
     this.hashtagCounts.clear();
     this.keywordCounts.clear();
     this.authorActivity.clear();
+    this.accountAges = [];
+    this.accountLocations.clear();
+    this.geoData = [];
+    this.countryCounts.clear();
+    this.regionCounts.clear();
 
     this.metrics = {
       totalPosts: 0,
@@ -421,7 +632,19 @@ export class AnalyticsEngine {
       topHashtags: [],
       topKeywords: [],
       avgFollowers: 0,
-      botPercentage: 0
+      botPercentage: 0,
+      accountAgeRisk: 0,
+      accountAgeDistribution: {
+        under7days: 0,
+        days7to30: 0,
+        days30to180: 0,
+        over180days: 0
+      },
+      averageAccountAge: 0,
+      topCountries: [],
+      topRegions: [],
+      geoDistribution: {},
+      geoSentiment: {}
     };
   }
 }
