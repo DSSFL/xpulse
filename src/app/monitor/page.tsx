@@ -33,13 +33,18 @@ export default function MonitorPage() {
     });
 
     socketInstance.on('tweet:new', (tweet: EnrichedTweet) => {
-      console.log('📊 [MONITOR] New tweet:', tweet.author.username);
-      setTweets(prev => [tweet, ...prev].slice(0, 50));
+      console.log('📊 [MONITOR] New tweet:', tweet?.author?.username);
+      if (tweet && tweet.id) {
+        setTweets(prev => [tweet, ...prev].slice(0, 50));
+      }
     });
 
     socketInstance.on('tweets:bulk', (bulkTweets: EnrichedTweet[]) => {
-      console.log('📦 [MONITOR] Bulk tweets received:', bulkTweets.length);
-      setTweets(bulkTweets.reverse());
+      console.log('📦 [MONITOR] Bulk tweets received:', bulkTweets?.length || 0);
+      if (Array.isArray(bulkTweets) && bulkTweets.length > 0) {
+        // Create a copy before reversing to avoid mutation
+        setTweets([...bulkTweets].reverse());
+      }
     });
 
     return () => {

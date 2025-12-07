@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { EnrichedTweet } from '@/types/tweet';
 import Image from 'next/image';
 
@@ -8,37 +9,45 @@ interface EnrichedTweetCardProps {
 }
 
 export default function EnrichedTweetCard({ tweet }: EnrichedTweetCardProps) {
-  const formatNumber = (num: number) => {
+  const [imageError, setImageError] = useState(false);
+
+  const formatNumber = (num: number | undefined) => {
+    if (num === undefined || num === null) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Unknown';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes}m`;
+      if (hours < 24) return `${hours}h`;
+      return `${days}d`;
+    } catch {
+      return 'Unknown';
+    }
   };
 
   const sentimentColor = {
     positive: 'text-vital-healthy',
     negative: 'text-vital-critical',
     neutral: 'text-vital-neutral'
-  }[tweet.sentiment];
+  }[tweet.sentiment] || 'text-x-gray-text';
 
   const sentimentBg = {
     positive: 'bg-vital-healthy/10 border-vital-healthy/30',
     negative: 'bg-vital-critical/10 border-vital-critical/30',
     neutral: 'bg-vital-neutral/10 border-vital-neutral/30'
-  }[tweet.sentiment];
+  }[tweet.sentiment] || 'bg-x-gray-dark border-x-gray-border';
 
   return (
     <div className={`p-4 rounded-xl border transition-all hover:border-x-blue hover:bg-x-gray-dark/50 ${sentimentBg}`}>
@@ -46,13 +55,23 @@ export default function EnrichedTweetCard({ tweet }: EnrichedTweetCardProps) {
       <div className="flex items-start gap-3 mb-3">
         {/* Profile Picture */}
         <div className="relative flex-shrink-0">
-          <Image
-            src={tweet.author.profile_image_url}
-            alt={tweet.author.name}
-            width={48}
-            height={48}
-            className="rounded-full"
-          />
+          {!imageError ? (
+            <Image
+              src={tweet.author.profile_image_url}
+              alt={tweet.author.name}
+              width={48}
+              height={48}
+              className="rounded-full"
+              unoptimized
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-x-gray-light flex items-center justify-center">
+              <span className="text-x-white text-lg font-bold">
+                {tweet.author.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
           {tweet.author.verified && (
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-pulse-blue rounded-full flex items-center justify-center border-2 border-x-black">
               <svg className="w-3 h-3 text-x-white" fill="currentColor" viewBox="0 0 24 24">
