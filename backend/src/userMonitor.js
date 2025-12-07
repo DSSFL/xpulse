@@ -1,6 +1,15 @@
 import { analyzeUserActivityWithGrok } from './grok.js';
 
 /**
+ * Helper function to upgrade profile image URL to higher resolution
+ */
+function upgradeProfileImageUrl(url) {
+  if (!url) return url;
+  // Replace _normal (48x48) with _400x400 for better quality
+  return url.replace('_normal', '_400x400');
+}
+
+/**
  * User Activity Monitor
  * Tracks user-specific activity: mentions, likes, replies, quotes, own posts
  */
@@ -55,7 +64,7 @@ export class UserActivityMonitor {
           username: userInfo.username,
           name: userInfo.name,
           verified: userInfo.verified || false,
-          profile_image_url: userInfo.profile_image_url,
+          profile_image_url: upgradeProfileImageUrl(userInfo.profile_image_url),
           description: userInfo.description || '',
           followers_count: userInfo.public_metrics?.followers_count || 0,
           following_count: userInfo.public_metrics?.following_count || 0,
@@ -101,8 +110,7 @@ export class UserActivityMonitor {
         const userTweets = await this.client.v2.userTimeline(userId, {
           max_results: 10,
           'tweet.fields': ['created_at', 'public_metrics', 'referenced_tweets', 'entities'],
-          'user.fields': ['username', 'name', 'verified', 'profile_image_url'],
-          expansions: ['referenced_tweets.id', 'referenced_tweets.id.author_id']
+          'user.fields': ['username', 'name', 'verified', 'profile_image_url']
         });
 
         if (userTweets.data?.data) {
@@ -237,7 +245,7 @@ export class UserActivityMonitor {
         username: author.username,
         name: author.name,
         verified: author.verified || false,
-        profile_image_url: author.profile_image_url
+        profile_image_url: upgradeProfileImageUrl(author.profile_image_url)
       },
       public_metrics: {
         like_count: tweet.public_metrics?.like_count || 0,
