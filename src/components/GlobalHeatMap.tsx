@@ -468,7 +468,7 @@ const GlobalHeatMap = ({ countyBotData = [] }: GlobalHeatMapProps) => {
                         const format3 = `${cleanName}, ${stateAbbrev}`;
 
                         // Look up bot farm score
-                        let botScore = countyBotLookup[format1] ||
+                        const botScore = countyBotLookup[format1] ||
                                       countyBotLookup[format2] ||
                                       countyBotLookup[format3] ||
                                       0;
