@@ -8,6 +8,7 @@ import SentimentGauge from '@/components/SentimentGauge';
 import GlobalHeatMap from '@/components/GlobalHeatMap';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ThreatDetailsModal from '@/components/ThreatDetailsModal';
+import { EnrichedPost } from '@/types/tweet';
 
 interface Metrics {
   postsPerMinute: number;
@@ -29,13 +30,6 @@ interface Metrics {
   topKeywords?: Array<{ word: string; count: number }>;
 }
 
-interface Post {
-  id: string;
-  text: string;
-  author: string | { username: string; name: string; [key: string]: unknown };
-  created_at: string;
-}
-
 export default function LiveDashboard() {
   const [, setSocket] = useState<Socket | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({
@@ -44,7 +38,7 @@ export default function LiveDashboard() {
     sentiment: { positive: 0, neutral: 0, negative: 0 },
     velocity: 0
   });
-  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
+  const [recentPosts, setRecentPosts] = useState<EnrichedPost[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--');
   const [modalOpen, setModalOpen] = useState(false);
@@ -91,7 +85,7 @@ export default function LiveDashboard() {
         }
       });
 
-      socketInstance.on('tweet:new', (post: Post) => {
+      socketInstance.on('tweet:new', (post: EnrichedPost) => {
         if (post && post.id) {
           setRecentPosts(prev => [post, ...prev].slice(0, 10));
         }
@@ -401,7 +395,7 @@ export default function LiveDashboard() {
                 <div className="flex items-start gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-x-white font-semibold">@{typeof post.author === 'string' ? post.author : post.author?.username || 'Unknown'}</span>
+                      <span className="text-x-white font-semibold">@{post.author.username}</span>
                       <span className="text-x-gray-text text-xs">
                         {new Date(post.created_at).toLocaleTimeString()}
                       </span>
