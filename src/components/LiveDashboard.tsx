@@ -31,7 +31,7 @@ interface Metrics {
 interface Tweet {
   id: string;
   text: string;
-  author: string;
+  author: string | { username: string; name: string; [key: string]: unknown };
   created_at: string;
 }
 
