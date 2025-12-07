@@ -30,14 +30,14 @@ type MetricType = 'tweets' | 'retweets' | 'quotes' | 'hashtags';
 const GlobalHeatMap = () => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('tweets');
   const [hoveredHotspot, setHoveredHotspot] = useState<HotspotData | null>(null);
-  const [hotspots, setHotspots] = useState<HotspotData[]>(initialHotspots);
+  const [hotspots] = useState<HotspotData[]>(initialHotspots);
   const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({
     coordinates: [0, 20],
     zoom: 1,
   });
 
   // TODO: Connect to backend WebSocket to get real geographic data
-  // For now, map is hidden until real data is available
+  // For now, map is empty until real data is available
   useEffect(() => {
     // Will be replaced with real backend data stream
   }, []);
