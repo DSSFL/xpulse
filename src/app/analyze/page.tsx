@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import { EnrichedPost } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
 import VortexLoader from '@/components/VortexLoader';
+import { useTrackedUser } from '@/contexts/TrackedUserContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +39,22 @@ function AnalyzeContent() {
   const searchParams = useSearchParams();
   const urlHandle = searchParams.get('handle');
 
-  const [handle, setHandle] = useState(urlHandle || '');
+  // Get tracked user from context
+  const { trackedHandle } = useTrackedUser();
+
+  // Pre-fill with tracked handle if available, otherwise use URL
+  const [handle, setHandle] = useState(urlHandle || trackedHandle || '');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<PersonalAnalysis | null>(null);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState<string>('');
+
+  // Update handle if tracked user changes
+  useEffect(() => {
+    if (trackedHandle && !handle) {
+      setHandle(trackedHandle);
+    }
+  }, [trackedHandle, handle]);
 
   const analyzeHandle = async () => {
     if (!handle.trim()) {

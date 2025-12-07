@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTrackedUser } from '@/contexts/TrackedUserContext';
 
 const navItems = [
   {
@@ -66,6 +67,7 @@ const bottomNavItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { trackedHandle, userInfo } = useTrackedUser();
 
   return (
     <>
@@ -142,14 +144,22 @@ export default function Sidebar() {
           <div className="flex items-center justify-center xl:justify-start gap-3">
             {/* Profile Photo */}
             <div className="w-10 h-10 rounded-full bg-[#333639] flex items-center justify-center overflow-hidden flex-shrink-0">
-              <svg className="w-6 h-6 text-[#71767B]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M5.651 19h12.698c-.337-1.8-1.023-3.21-1.945-4.19C15.318 13.65 13.838 13 12 13s-3.317.65-4.404 1.81c-.922.98-1.608 2.39-1.945 4.19zm.486-5.56C7.627 11.85 9.648 11 12 11s4.373.85 5.863 2.44c1.477 1.58 2.366 3.8 2.632 6.46l.11 1.1H3.395l.11-1.1c.266-2.66 1.155-4.88 2.632-6.46zM12 4c-1.105 0-2 .9-2 2s.895 2 2 2 2-.9 2-2-.895-2-2-2zM8 6c0-2.21 1.791-4 4-4s4 1.79 4 4-1.791 4-4 4-4-1.79-4-4z" />
-              </svg>
+              {userInfo?.profile_image_url ? (
+                <img src={userInfo.profile_image_url} alt={userInfo.name} className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-6 h-6 text-[#71767B]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5.651 19h12.698c-.337-1.8-1.023-3.21-1.945-4.19C15.318 13.65 13.838 13 12 13s-3.317.65-4.404 1.81c-.922.98-1.608 2.39-1.945 4.19zm.486-5.56C7.627 11.85 9.648 11 12 11s4.373.85 5.863 2.44c1.477 1.58 2.366 3.8 2.632 6.46l.11 1.1H3.395l.11-1.1c.266-2.66 1.155-4.88 2.632-6.46zM12 4c-1.105 0-2 .9-2 2s.895 2 2 2 2-.9 2-2-.895-2-2-2zM8 6c0-2.21 1.791-4 4-4s4 1.79 4 4-1.791 4-4 4-4-1.79-4-4z" />
+                </svg>
+              )}
             </div>
             {/* Name and Handle */}
             <div className="hidden xl:block flex-1 min-w-0">
-              <p className="text-[#E7E9EA] font-bold text-[15px] truncate">XPulse</p>
-              <p className="text-[#71767B] text-[15px] truncate">@xpulse</p>
+              <p className="text-[#E7E9EA] font-bold text-[15px] truncate">
+                {userInfo?.name || trackedHandle || 'XPulse'}
+              </p>
+              <p className="text-[#71767B] text-[15px] truncate">
+                @{userInfo?.username || trackedHandle || 'xpulse'}
+              </p>
             </div>
             {/* Three dots menu */}
             <div className="hidden xl:block">

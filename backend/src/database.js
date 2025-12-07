@@ -460,6 +460,102 @@ class Database {
   }
 
   /**
+   * Fetch posts with geographic data for heat map generation
+   */
+  async getPostsWithGeo(username, limit = 5000) {
+    const client = await this.pool.connect();
+    try {
+      console.log(`\n📊 [DATABASE] Fetching geo posts for @${username}...`);
+
+      const result = await client.query(`
+        SELECT
+          up.tweet_id,
+          up.author_username,
+          up.author_user_id,
+          up.tweet_text,
+          up.created_at,
+          up.sentiment,
+          up.geo_full_name,
+          up.geo_country_code,
+          up.author_account_age_days
+        FROM user_posts up
+        JOIN tracked_users tu ON up.tracked_user_id = tu.id
+        WHERE LOWER(tu.username) = LOWER($1)
+          AND up.has_geo = true
+          AND up.geo_country_code = 'US'
+        ORDER BY up.created_at DESC
+        LIMIT $2
+      `, [username, limit]);
+
+      console.log(`✅ [DATABASE] Fetched ${result.rows.length} posts with US geographic data`);
+
+      if (result.rows.length > 0) {
+        const locationSample = result.rows
+          .slice(0, 5)
+          .map(row => row.geo_full_name)
+          .join(', ');
+        console.log(`📍 [DATABASE] Sample locations: ${locationSample}`);
+      }
+
+      return result.rows;
+    } catch (error) {
+      console.error('❌ [DATABASE] Error fetching geo posts:', error);
+      return [];
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Convert database post to Twitter API format for analytics engine
+   */
+  convertToTwitterFormat(dbPost) {
+    // Parse location from "City, ST" or "State, USA" format
+    const parts = dbPost.geo_full_name.split(',').map(p => p.trim());
+
+    // Determine place type based on format
+    let placeType = 'city';
+    if (parts.length === 2) {
+      const secondPart = parts[1];
+      // If second part is 2-letter state code, it's a city
+      // If second part is "USA", first part is likely a state
+      if (secondPart === 'USA' || secondPart.length > 2) {
+        placeType = 'admin'; // State-level
+      }
+    }
+
+    return {
+      id: dbPost.tweet_id,
+      text: dbPost.tweet_text || '',
+      created_at: dbPost.created_at,
+      author: {
+        id: dbPost.author_user_id,
+        username: dbPost.author_username,
+        account_created_at: this.calculateAccountCreationDate(dbPost.author_account_age_days)
+      },
+      place: {
+        full_name: dbPost.geo_full_name,
+        place_type: placeType,
+        country_code: dbPost.geo_country_code
+      }
+    };
+  }
+
+  /**
+   * Calculate account creation date from age in days
+   */
+  calculateAccountCreationDate(ageDays) {
+    if (!ageDays) {
+      // Default to 365 days if unknown
+      ageDays = 365;
+    }
+
+    const now = new Date();
+    const createdAt = new Date(now.getTime() - (ageDays * 24 * 60 * 60 * 1000));
+    return createdAt.toISOString();
+  }
+
+  /**
    * Close the pool
    */
   async close() {

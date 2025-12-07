@@ -5,13 +5,19 @@ import { useSearchParams } from 'next/navigation';
 import { io } from 'socket.io-client';
 import LiveDashboard from '@/components/LiveDashboard';
 import VortexLoader from '@/components/VortexLoader';
+import { useTrackedUser } from '@/contexts/TrackedUserContext';
 
 export const dynamic = 'force-dynamic';
 
 function VitalsContent() {
   const searchParams = useSearchParams();
-  const handle = searchParams.get('handle');
+  const urlHandle = searchParams.get('handle');
   const topics = searchParams.get('topics');
+  const { trackedHandle, setTrackedUser } = useTrackedUser();
+
+  // Use URL handle if provided, otherwise fall back to tracked handle from context
+  const handle = urlHandle || trackedHandle;
+
   const [showChangeInput, setShowChangeInput] = useState(false);
   const [newHandle, setNewHandle] = useState('');
 
@@ -36,7 +42,9 @@ function VitalsContent() {
   const handleChangeUser = () => {
     if (newHandle.trim()) {
       const cleanHandle = newHandle.trim().replace('@', '');
-      window.location.href = `/monitor?handle=${cleanHandle}`;
+      setTrackedUser(cleanHandle);
+      setShowChangeInput(false);
+      setNewHandle('');
     }
   };
 
@@ -72,13 +80,19 @@ function VitalsContent() {
                   {!showChangeInput ? (
                     <>
                       <button
-                        onClick={() => window.location.href = `/analyze?handle=${handle}`}
+                        onClick={() => {
+                          if (handle && !trackedHandle) setTrackedUser(handle);
+                          window.location.href = '/analyze';
+                        }}
                         className="text-xs px-4 py-2 rounded-full bg-[#16181C] hover:bg-[#1D9BF0]/10 text-[#71767B] hover:text-[#1D9BF0] border border-[#2F3336] hover:border-[#1D9BF0] transition-all font-medium whitespace-nowrap"
                       >
                         Analyze
                       </button>
                       <button
-                        onClick={() => window.location.href = `/monitor?handle=${handle}`}
+                        onClick={() => {
+                          if (handle && !trackedHandle) setTrackedUser(handle);
+                          window.location.href = '/monitor';
+                        }}
                         className="text-xs px-4 py-2 rounded-full bg-[#16181C] hover:bg-[#1D9BF0]/10 text-[#71767B] hover:text-[#1D9BF0] border border-[#2F3336] hover:border-[#1D9BF0] transition-all font-medium whitespace-nowrap"
                       >
                         Monitor
@@ -127,7 +141,7 @@ function VitalsContent() {
 
       {/* Content with bottom padding when command bar is shown */}
       <div className={handle && topics ? 'pb-20' : ''}>
-        <LiveDashboard />
+        <LiveDashboard handle={handle || undefined} />
       </div>
     </div>
   );

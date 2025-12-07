@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Sidebar from '@/components/Sidebar';
+import { TrackedUserProvider } from '@/contexts/TrackedUserContext';
 
 export const metadata: Metadata = {
   title: 'XPulse - Real-time Narrative Intelligence',
@@ -21,12 +22,14 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="bg-x-black text-x-white antialiased">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 md:ml-[68px] xl:ml-[275px] pb-20 md:pb-0">
-            {children}
-          </main>
-        </div>
+        <TrackedUserProvider>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 md:ml-[68px] xl:ml-[275px] pb-20 md:pb-0">
+              {children}
+            </main>
+          </div>
+        </TrackedUserProvider>
       </body>
     </html>
   );

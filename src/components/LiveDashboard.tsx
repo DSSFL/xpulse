@@ -1,6 +1,6 @@
 'use client';
 // Force rebuild with production URL - v2
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import VitalCard from '@/components/VitalCard';
 import EKGLine from '@/components/EKGLine';
@@ -93,8 +93,12 @@ interface Metrics {
   usHeatMapData?: Record<string, number>;
 }
 
-export default function LiveDashboard() {
-  const [, setSocket] = useState<Socket | null>(null);
+interface LiveDashboardProps {
+  handle?: string;
+}
+
+export default function LiveDashboard({ handle }: LiveDashboardProps = {}) {
+  const socketRef = useRef<Socket | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({
     postsPerMinute: 0,
     totalPosts: 0,
@@ -107,6 +111,14 @@ export default function LiveDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedThreat, setSelectedThreat] = useState<'velocity' | 'sentiment' | 'virality' | 'authenticity' | 'coordination' | 'narrative'>('velocity');
 
+  // Separate state for geo data - loaded ONCE and never updated (prevents flickering)
+  const [geoData, setGeoData] = useState<{
+    usCountyBotFarms: Array<any>;
+    usHeatMapData: Record<string, number>;
+  } | null>(null);
+  const [geoDataLoading, setGeoDataLoading] = useState(false);
+
+  // Create socket connection ONCE on mount
   useEffect(() => {
     // Connect to backend WebSocket - Use env var or hardcoded production URL
     const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://api.xpulse.buzz';
@@ -125,6 +137,12 @@ export default function LiveDashboard() {
       socketInstance.on('connect', () => {
         console.log('✅ [XPULSE] Connected to backend - Socket ID:', socketInstance.id);
         setIsConnected(true);
+
+        // Send vitals:subscribe immediately after connecting if we have a handle
+        if (handle) {
+          console.log(`🎯 [XPULSE] Auto-subscribing to vitals after connection for: @${handle}`);
+          socketInstance.emit('vitals:subscribe', { handle });
+        }
       });
 
       socketInstance.on('disconnect', (reason) => {
@@ -143,9 +161,25 @@ export default function LiveDashboard() {
 
       socketInstance.on('metrics:update', (data: Metrics) => {
         if (data && typeof data === 'object') {
+          console.log('📊 [XPULSE] Received metrics update:', data);
           setMetrics(data);
           setLastUpdate(new Date().toLocaleTimeString());
         }
+      });
+
+      // Listen for tracking configured event to start loading state
+      socketInstance.on('tracking:configured', () => {
+        console.log('🗺️ [XPULSE] Tracking configured, loading geo data...');
+        setGeoDataLoading(true);
+      });
+
+      // Listen for geo data ONCE - this prevents flickering on the heat map
+      socketInstance.on('geo:data', (data: { usCountyBotFarms: Array<any>; usHeatMapData: Record<string, number> }) => {
+        console.log('🗺️ [XPULSE] Received geo data (ONE-TIME):', data);
+        console.log('🗺️ [XPULSE] Counties:', data.usCountyBotFarms?.length || 0);
+        console.log('🗺️ [XPULSE] States in heat map:', Object.keys(data.usHeatMapData || {}).length);
+        setGeoData(data);
+        setGeoDataLoading(false);
       });
 
       socketInstance.on('tweet:new', (post: EnrichedPost) => {
@@ -154,17 +188,27 @@ export default function LiveDashboard() {
         }
       });
 
-      setSocket(socketInstance);
+      socketRef.current = socketInstance;
 
-      return () => {
-        console.log('🔌 [XPULSE] Cleaning up socket connection');
-        socketInstance.disconnect();
-      };
+      // IMPORTANT: Don't disconnect on cleanup - keep connection alive
+      // React Strict Mode in dev causes double mounting, so we don't want to disconnect
+      // return () => {
+      //   console.log('🔌 [XPULSE] Cleaning up socket connection');
+      //   socketInstance.disconnect();
+      // };
     } catch (error) {
       console.error('❌ [XPULSE] Failed to initialize socket:', error);
       setIsConnected(false);
     }
-  }, []);
+  }, []); // Empty dependency array - only create socket once
+
+  // Handle vitals subscription when handle changes
+  useEffect(() => {
+    if (handle && socketRef.current && socketRef.current.connected) {
+      console.log(`🎯 [XPULSE] Subscribing to vitals for: @${handle}`);
+      socketRef.current.emit('vitals:subscribe', { handle });
+    }
+  }, [handle]); // Only re-run when handle changes
 
   // Calculate sentiment percentage with safe defaults
   const totalSentiment = (metrics?.sentiment?.positive || 0) + (metrics?.sentiment?.neutral || 0) + (metrics?.sentiment?.negative || 0);
@@ -397,15 +441,26 @@ export default function LiveDashboard() {
         </section>
       )}
 
-      {/* NEW: US Bot Farm Heat Map Section */}
-      {metrics.usHeatMapData && Object.keys(metrics.usHeatMapData).length > 0 && (
+      {/* NEW: US Bot Farm Heat Map Section - Uses separate geo data state to prevent flickering */}
+      {geoDataLoading && (
+        <section className="mb-8">
+          <div className="bg-x-gray-dark border border-x-gray-border rounded-xl p-8 text-center">
+            <div className="animate-pulse">
+              <div className="text-x-gray-text">Loading geographic data...</div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {!geoDataLoading && geoData && (geoData.usCountyBotFarms?.length > 0 || (geoData.usHeatMapData && Object.keys(geoData.usHeatMapData).length > 0)) && (
         <section className="mb-8">
           <USBotFarmHeatMap
             metrics={{
-              usCountyBotFarms: metrics.usCountyBotFarms || [],
-              usStateBotFarms: metrics.usStateBotFarms || [],
-              usHeatMapData: metrics.usHeatMapData || {}
+              usCountyBotFarms: geoData.usCountyBotFarms || [],
+              usStateBotFarms: [],
+              usHeatMapData: geoData.usHeatMapData || {}
             }}
+            handle={handle}
           />
         </section>
       )}
@@ -477,7 +532,7 @@ export default function LiveDashboard() {
       {/* Global Heat Map */}
       <section className="mb-8">
         <ErrorBoundary>
-          <GlobalHeatMap />
+          <GlobalHeatMap countyBotData={metrics.usCountyBotFarms || []} />
         </ErrorBoundary>
       </section>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 
 interface BotFarmMetrics {
@@ -42,13 +42,45 @@ interface USBotFarmHeatMapProps {
 
 const geoUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
 
+// State name to code mapping
+const stateNameToCode: Record<string, string> = {
+  'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
+  'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA',
+  'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA',
+  'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+  'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO',
+  'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
+  'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH',
+  'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+  'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT',
+  'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY',
+  'District of Columbia': 'DC'
+};
+
 export default function USBotFarmHeatMap({ metrics, handle }: USBotFarmHeatMapProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🗺️ [HEATMAP DEBUG] Component rendered/updated');
+    console.log('🗺️ [HEATMAP DEBUG] Handle:', handle);
+    console.log('🗺️ [HEATMAP DEBUG] usHeatMapData:', metrics.usHeatMapData);
+    console.log('🗺️ [HEATMAP DEBUG] usHeatMapData keys:', Object.keys(metrics.usHeatMapData || {}));
+    console.log('🗺️ [HEATMAP DEBUG] Sample scores:',
+      Object.entries(metrics.usHeatMapData || {}).slice(0, 5).map(([code, score]) => `${code}: ${score}`).join(', ')
+    );
+    console.log('🗺️ [HEATMAP DEBUG] usCountyBotFarms count:', metrics.usCountyBotFarms?.length || 0);
+  }, [metrics, handle]);
+
   // Get color based on bot farm score
   const getColor = (stateCode: string) => {
     const score = metrics.usHeatMapData[stateCode] || 0;
+
+    // Debug first few states
+    if (['CA', 'TX', 'NY', 'FL', 'SD'].includes(stateCode)) {
+      console.log(`🎨 [COLOR DEBUG] ${stateCode} -> Score: ${score} -> Color decision`);
+    }
 
     if (score === 0) return '#1a1a1a'; // No data - dark gray
     if (score < 20) return '#16a34a'; // Low risk - green
@@ -118,7 +150,8 @@ export default function USBotFarmHeatMap({ metrics, handle }: USBotFarmHeatMapPr
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
               geographies.map((geo) => {
-                const stateCode = geo.properties.name; // State abbreviation
+                const stateName = geo.properties.name; // Full state name
+                const stateCode = stateNameToCode[stateName] || stateName; // Convert to code
 
                 return (
                   <Geography

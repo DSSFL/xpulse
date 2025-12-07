@@ -1,3 +1,10 @@
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /**
  * Real-time Analytics Engine
  * Tracks velocity, spikes, sentiment, and narrative patterns
@@ -6,6 +13,9 @@ export class AnalyticsEngine {
   constructor(options = {}) {
     this.windowSize = options.windowSize || 60000; // 1 minute default
     this.spikeThreshold = options.spikeThreshold || 2.0; // 2x average = spike
+
+    // Load city-to-county mapping data
+    this.cityToCountyMap = this.loadCityToCountyMapping();
 
     // Time-series data
     this.postTimestamps = [];
@@ -223,18 +233,93 @@ export class AnalyticsEngine {
   }
 
   /**
+   * Load city-to-county mapping data from JSON file
+   */
+  loadCityToCountyMapping() {
+    try {
+      const mappingPath = join(__dirname, 'data', 'city-to-county.json');
+      const data = readFileSync(mappingPath, 'utf8');
+      const json = JSON.parse(data);
+      return json.mappings || {};
+    } catch (error) {
+      console.warn('⚠️ Could not load city-to-county mapping:', error.message);
+      return {};
+    }
+  }
+
+  /**
+   * Map a city name to its parent county
+   * @param {string} cityName - City name (e.g., "Los Angeles")
+   * @param {string} stateCode - State code (e.g., "CA")
+   * @returns {string|null} - County name in format "County Name County, ST" or null if not found
+   */
+  mapCityToCounty(cityName, stateCode) {
+    const cityKey = `${cityName}, ${stateCode}`;
+    const countyName = this.cityToCountyMap[cityKey];
+
+    if (countyName) {
+      console.log(`✅ Mapped city "${cityKey}" to county "${countyName}"`);
+      return countyName;
+    }
+
+    console.log(`⚠️ No county mapping found for city: ${cityKey}`);
+    return null;
+  }
+
+  /**
    * NEW: Track US county-level data for bot farm heat map
+   * Updated to handle both city-level and county-level place data
    */
   trackUSCountyData(post, sentiment, timestamp) {
+    console.log(`\n🔍 [COUNTY TRACKER] Called with place: "${post.place.full_name}" (type: ${post.place.place_type})`);
+
     const fullName = post.place.full_name;
     const placeType = post.place.place_type;
 
-    // Parse location: "San Francisco, CA" or "Los Angeles County, CA"
+    // Parse location: "Los Angeles, CA" or "Los Angeles County, CA" format
     const parts = fullName.split(',').map(p => p.trim());
-    if (parts.length < 2) return;
+    if (parts.length < 2) {
+      console.log(`❌ [COUNTY TRACKER] Invalid format (need 2 parts): "${fullName}"`);
+      return;
+    }
 
-    const location = parts[0]; // City or County name
+    let location = parts[0]; // City, County, or State name
     const stateCode = parts[parts.length - 1]; // State abbreviation
+    console.log(`📍 [COUNTY TRACKER] Parsed: location="${location}", state="${stateCode}", type="${placeType}"`);
+
+    // Handle city-level places by mapping to their parent county
+    if (placeType === 'city') {
+      console.log(`🏙️ [COUNTY TRACKER] City detected, attempting mapping...`);
+      const countyName = this.mapCityToCounty(location, stateCode);
+      if (!countyName) {
+        // City not in our mapping - skip this data point
+        console.log(`⚠️ [COUNTY TRACKER] Skipping unmapped city: ${location}, ${stateCode}`);
+        return;
+      }
+
+      // Extract just the county name from "County Name County, ST" format
+      // e.g., "Jefferson County, WI" -> "Jefferson County"
+      const countyParts = countyName.split(',').map(p => p.trim());
+      location = countyParts[0];
+
+      console.log(`✅ [COUNTY TRACKER] City "${fullName}" mapped to county "${location}, ${stateCode}"`);
+    }
+    // Handle admin-level places (counties/states)
+    else if (placeType === 'admin') {
+      console.log(`🏛️ [COUNTY TRACKER] Admin place detected: "${location}"`);
+      // Only track county-level data (not state-level)
+      // Check if the location name contains "County" or "Parish" (for Louisiana)
+      if (!location.includes('County') && !location.includes('Parish')) {
+        console.log(`⏭️ [COUNTY TRACKER] Skipping state-level admin: "${location}"`);
+        return; // Skip state-level admin places
+      }
+      console.log(`✅ [COUNTY TRACKER] County-level admin accepted: "${location}"`);
+    }
+    // Skip other place types (poi, neighborhood, etc.)
+    else {
+      console.log(`⏭️ [COUNTY TRACKER] Skipping place type "${placeType}"`);
+      return;
+    }
 
     // Calculate account age for bot detection
     let accountAgeDays = null;
@@ -295,6 +380,59 @@ export class AnalyticsEngine {
     if (accountAgeDays !== null) {
       if (accountAgeDays < 30) countyData.newAccounts++;
       if (accountAgeDays < 7) countyData.veryNewAccounts++;
+    }
+
+    console.log(`💾 [COUNTY TRACKER] Data stored for "${locationKey}": ${countyData.totalPosts} posts, ${countyData.veryNewAccounts} very new accounts`);
+    console.log(`💾 [COUNTY TRACKER] Total counties tracked: ${this.usCountyData.size}`);
+  }
+
+  /**
+   * Load historical geographic data from database and populate county heat map
+   */
+  async loadHistoricalGeoData(database, username) {
+    console.log(`\n🗄️ [HISTORICAL DATA] Loading geo data for @${username}...`);
+
+    try {
+      // Fetch posts with geographic data from database
+      const dbPosts = await database.getPostsWithGeo(username, 5000);
+
+      if (dbPosts.length === 0) {
+        console.log(`⚠️ [HISTORICAL DATA] No geographic data found for @${username}`);
+        return false;
+      }
+
+      console.log(`📊 [HISTORICAL DATA] Processing ${dbPosts.length} posts...`);
+
+      // Process each post through the analytics engine
+      let processedCount = 0;
+      for (const dbPost of dbPosts) {
+        // Convert database format to Twitter API format
+        const twitterPost = database.convertToTwitterFormat(dbPost);
+
+        // Determine sentiment from database or analyze
+        const sentiment = dbPost.sentiment || this.analyzeSentiment(twitterPost.text);
+
+        // Use post creation timestamp
+        const timestamp = new Date(twitterPost.created_at).getTime();
+
+        // Track county data
+        this.trackUSCountyData(twitterPost, sentiment, timestamp);
+
+        processedCount++;
+      }
+
+      console.log(`✅ [HISTORICAL DATA] Processed ${processedCount} posts`);
+      console.log(`🗺️ [HISTORICAL DATA] County data populated: ${this.usCountyData.size} counties tracked`);
+
+      // Get metrics to populate the heat map
+      const metrics = this.getMetrics();
+
+      console.log(`🎯 [HISTORICAL DATA] Heat map ready with ${metrics.usCountyBotFarms.length} suspicious counties`);
+      return true;
+
+    } catch (error) {
+      console.error('❌ [HISTORICAL DATA] Error loading historical data:', error);
+      return false;
     }
   }
 
@@ -680,6 +818,14 @@ export class AnalyticsEngine {
       .sort((a, b) => b.botFarmScore - a.botFarmScore)
       .slice(0, 20); // Top 20 suspicious locations
 
+    console.log(`\n📊 [METRICS] County data prepared: ${countyScores.length} total counties, ${this.metrics.usCountyBotFarms.length} suspicious`);
+    if (this.metrics.usCountyBotFarms.length > 0) {
+      console.log(`📊 [METRICS] Top 3 suspicious counties:`);
+      this.metrics.usCountyBotFarms.slice(0, 3).forEach(c => {
+        console.log(`   - ${c.fullName}: Score ${c.botFarmScore}, Posts: ${c.totalPosts}`);
+      });
+    }
+
     // Calculate state-level scores
     const stateScores = [];
     this.usStateData.forEach((data, stateCode) => {
@@ -712,6 +858,9 @@ export class AnalyticsEngine {
     stateScores.forEach(state => {
       this.metrics.usHeatMapData[state.stateCode] = state.botFarmScore;
     });
+
+    console.log(`📊 [METRICS] State heat map data: ${Object.keys(this.metrics.usHeatMapData).length} states`);
+    console.log(`📊 [METRICS] Sample state scores: ${Object.entries(this.metrics.usHeatMapData).slice(0, 3).map(([code, score]) => `${code}:${score}`).join(', ')}`);
   }
 
   /**

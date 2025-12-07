@@ -204,10 +204,32 @@ function startRealPostStream() {
   }, 10000);
 }
 
+// Track last broadcasted geo data to prevent unnecessary updates
+let lastGeoData = null;
+
 // Broadcast metrics every second
 setInterval(() => {
   const metrics = analytics.getMetrics();
-  io.emit('metrics:update', metrics);
+
+  // IMPORTANT: Don't broadcast if county data is empty (this would overwrite historical data)
+  // Only broadcast if we have county data OR if we've never loaded historical data
+  const hasCountyData = metrics.usCountyBotFarms && metrics.usCountyBotFarms.length > 0;
+  const hasHeatMapData = metrics.usHeatMapData && Object.keys(metrics.usHeatMapData).length > 0;
+
+  if (hasCountyData || hasHeatMapData) {
+    // Only broadcast if BOTH heat map AND county data have changed
+    // This prevents flickering from recalculations
+    const currentGeoData = JSON.stringify({
+      heatMap: metrics.usHeatMapData,
+      counties: metrics.usCountyBotFarms
+    });
+
+    if (currentGeoData !== lastGeoData) {
+      io.emit('metrics:update', metrics);
+      lastGeoData = currentGeoData;
+      console.log(`📊 [BROADCAST] Updated geo data: ${metrics.usCountyBotFarms.length} counties, ${Object.keys(metrics.usHeatMapData).length} states`);
+    }
+  }
 
   // Log spike detection
   if (analytics.spikeDetected) {
@@ -360,7 +382,21 @@ io.on('connection', (socket) => {
     console.log(`⚙️  [TRACKING] Configuring tracking for @${handle}:`, topics);
     const searchQuery = await generateGrokSearchQuery(handle, topics);
     trackingConfigs.set(socket.id, { handle, topics, searchQuery });
+
+    // Send tracking:configured first to trigger loading state on frontend
     socket.emit('tracking:configured', { searchQuery });
+
+    // Load historical geographic data to populate heat map
+    console.log(`🗺️ [TRACKING] Loading historical geo data for @${handle}...`);
+    await analytics.loadHistoricalGeoData(database, handle);
+
+    // Send geo data ONCE via dedicated event (won't flicker)
+    const geoData = {
+      usCountyBotFarms: analytics.getMetrics().usCountyBotFarms,
+      usHeatMapData: analytics.getMetrics().usHeatMapData
+    };
+    socket.emit('geo:data', geoData);
+    console.log(`✅ [TRACKING] Sent geo data with ${geoData.usCountyBotFarms.length} suspicious counties`);
   });
 
   // Handle user analysis requests
@@ -535,6 +571,373 @@ io.on('connection', (socket) => {
   socket.on('monitor:status', () => {
     const status = userMonitor.getStatus(socket.id);
     socket.emit('monitor:status-update', status);
+  });
+
+  // Handle vitals subscription for specific user
+  socket.on('vitals:subscribe', async (data) => {
+    const { handle } = data;
+    console.log(`📊 [VITALS] Client ${socket.id} subscribing to vitals for @${handle}`);
+
+    try {
+      // Query all posts for this user from the database
+      const client = await database.pool.connect();
+
+      try {
+        // First, get the tracked user ID
+        const userResult = await client.query(`
+          SELECT id FROM tracked_users WHERE LOWER(username) = LOWER($1)
+        `, [handle]);
+
+        if (userResult.rows.length === 0) {
+          console.log(`⚠️  [VITALS] No tracked user found for @${handle}`);
+          socket.emit('metrics:update', {
+            postsPerMinute: 0,
+            totalPosts: 0,
+            sentiment: { positive: 0, neutral: 0, negative: 0 },
+            velocity: 0
+          });
+          client.release();
+          return;
+        }
+
+        const trackedUserId = userResult.rows[0].id;
+        console.log(`✅ [VITALS] Found tracked user ID: ${trackedUserId} for @${handle}`);
+
+        // Query all posts associated with this tracked user (bot accounts)
+        const result = await client.query(`
+          SELECT
+            tweet_id,
+            author_username,
+            tweet_text,
+            sentiment,
+            sentiment_score,
+            has_geo,
+            geo_full_name,
+            geo_country,
+            geo_country_code,
+            author_account_age_days,
+            created_at,
+            like_count,
+            retweet_count
+          FROM user_posts
+          WHERE tracked_user_id = $1
+          AND has_geo = true
+          ORDER BY created_at DESC
+        `, [trackedUserId]);
+
+        const posts = result.rows;
+        console.log(`📊 [VITALS] Found ${posts.length} posts for @${handle}`);
+
+        if (posts.length === 0) {
+          socket.emit('metrics:update', {
+            postsPerMinute: 0,
+            totalPosts: 0,
+            sentiment: { positive: 0, neutral: 0, negative: 0 },
+            velocity: 0
+          });
+          client.release();
+          return;
+        }
+
+        // Calculate metrics
+        const totalPosts = posts.length;
+
+        // Sentiment breakdown
+        const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+        posts.forEach(post => {
+          if (post.sentiment) {
+            sentimentCounts[post.sentiment.toLowerCase()] = (sentimentCounts[post.sentiment.toLowerCase()] || 0) + 1;
+          }
+        });
+
+        // Calculate average sentiment score
+        const sentimentScores = posts.filter(p => p.sentiment_score).map(p => parseFloat(p.sentiment_score));
+        const avgSentiment = sentimentScores.length > 0
+          ? sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length
+          : 0;
+
+        // Account age distribution
+        const accountAgeBuckets = {
+          under7days: 0,
+          days7to30: 0,
+          days30to180: 0,
+          over180days: 0
+        };
+
+        let totalAccountAge = 0;
+        let accountAgeCount = 0;
+
+        posts.forEach(post => {
+          if (post.author_account_age_days !== null) {
+            const age = post.author_account_age_days;
+            totalAccountAge += age;
+            accountAgeCount++;
+
+            if (age < 7) accountAgeBuckets.under7days++;
+            else if (age < 30) accountAgeBuckets.days7to30++;
+            else if (age < 180) accountAgeBuckets.days30to180++;
+            else accountAgeBuckets.over180days++;
+          }
+        });
+
+        const avgAccountAge = accountAgeCount > 0 ? Math.round(totalAccountAge / accountAgeCount) : 0;
+
+        // Calculate account age risk score (0-100)
+        const veryNewAccounts = accountAgeBuckets.under7days;
+        const veryNewPct = (veryNewAccounts / totalPosts) * 100;
+        let accountAgeRisk = Math.min(veryNewPct, 30);
+        if (avgAccountAge < 30) {
+          accountAgeRisk += Math.min(((30 - avgAccountAge) / 30) * 40, 40);
+        }
+        accountAgeRisk = Math.min(Math.round(accountAgeRisk), 100);
+
+        // Geographic distribution
+        const geoData = {};
+        const countryData = {};
+        const regionData = {};
+
+        posts.filter(p => p.has_geo).forEach(post => {
+          // Country aggregation
+          if (post.geo_country) {
+            if (!countryData[post.geo_country]) {
+              countryData[post.geo_country] = {
+                country: post.geo_country,
+                count: 0,
+                positive: 0,
+                neutral: 0,
+                negative: 0
+              };
+            }
+            countryData[post.geo_country].count++;
+            if (post.sentiment) {
+              countryData[post.geo_country][post.sentiment.toLowerCase()]++;
+            }
+          }
+
+          // Region aggregation
+          if (post.geo_full_name) {
+            if (!regionData[post.geo_full_name]) {
+              regionData[post.geo_full_name] = {
+                region: post.geo_full_name,
+                country: post.geo_country || 'Unknown',
+                country_code: post.geo_country_code || '',
+                count: 0,
+                positive: 0,
+                neutral: 0,
+                negative: 0
+              };
+            }
+            regionData[post.geo_full_name].count++;
+            if (post.sentiment) {
+              regionData[post.geo_full_name][post.sentiment.toLowerCase()]++;
+            }
+          }
+
+          // Heat map data (country code -> count)
+          if (post.geo_country_code) {
+            geoData[post.geo_country_code] = (geoData[post.geo_country_code] || 0) + 1;
+          }
+        });
+
+        // Convert to arrays and sort by count
+        const topCountries = Object.values(countryData)
+          .map(c => ({
+            ...c,
+            sentiment_score: c.count > 0
+              ? ((c.positive - c.negative) / c.count)
+              : 0
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+
+        const topRegions = Object.values(regionData)
+          .map(r => ({
+            ...r,
+            sentiment_score: r.count > 0
+              ? ((r.positive - r.negative) / r.count)
+              : 0
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 20);
+
+        // US Bot Farm Detection
+        const usRegions = posts.filter(p =>
+          p.has_geo &&
+          (p.geo_country_code === 'US' || p.geo_country === 'United States')
+        );
+
+        const usCountyData = {};
+        const usStateData = {};
+
+        usRegions.forEach(post => {
+          const location = post.geo_full_name || 'Unknown';
+
+          // Try to extract state code (last 2 chars if format is "City, ST")
+          const parts = location.split(',').map(p => p.trim());
+          const stateCode = parts.length > 1 ? parts[parts.length - 1].substring(0, 2) : 'US';
+
+          // County/city level
+          if (!usCountyData[location]) {
+            usCountyData[location] = {
+              location,
+              stateCode,
+              fullName: location,
+              totalPosts: 0,
+              newAccounts: 0,
+              veryNewAccounts: 0,
+              totalAccountAge: 0,
+              accountCount: 0,
+              sentiment: { positive: 0, neutral: 0, negative: 0 }
+            };
+          }
+
+          const county = usCountyData[location];
+          county.totalPosts++;
+
+          if (post.author_account_age_days !== null) {
+            county.totalAccountAge += post.author_account_age_days;
+            county.accountCount++;
+            if (post.author_account_age_days < 30) county.newAccounts++;
+            if (post.author_account_age_days < 7) county.veryNewAccounts++;
+          }
+
+          if (post.sentiment) {
+            county.sentiment[post.sentiment.toLowerCase()]++;
+          }
+
+          // State level aggregation
+          if (!usStateData[stateCode]) {
+            usStateData[stateCode] = {
+              stateCode,
+              totalPosts: 0,
+              newAccounts: 0,
+              veryNewAccounts: 0,
+              totalAccountAge: 0,
+              accountCount: 0,
+              sentiment: { positive: 0, neutral: 0, negative: 0 }
+            };
+          }
+
+          const state = usStateData[stateCode];
+          state.totalPosts++;
+          if (post.author_account_age_days !== null) {
+            state.totalAccountAge += post.author_account_age_days;
+            state.accountCount++;
+            if (post.author_account_age_days < 30) state.newAccounts++;
+            if (post.author_account_age_days < 7) state.veryNewAccounts++;
+          }
+          if (post.sentiment) {
+            state.sentiment[post.sentiment.toLowerCase()]++;
+          }
+        });
+
+        // Calculate bot scores
+        const calculateBotScore = (data) => {
+          let score = 0;
+          const veryNewPct = (data.veryNewAccounts / data.totalPosts) * 100;
+          score += Math.min(veryNewPct, 30);
+
+          const avgAge = data.accountCount > 0 ? data.totalAccountAge / data.accountCount : 999;
+          if (avgAge < 30) {
+            score += Math.min(((30 - avgAge) / 30) * 40, 40);
+          }
+
+          if (data.totalPosts > 10) {
+            score += Math.min((data.totalPosts / 10) * 2, 20);
+          }
+
+          const negativeRatio = data.sentiment.negative / data.totalPosts;
+          if (negativeRatio > 0.3) {
+            score += 10;
+          }
+
+          return Math.min(Math.round(score), 100);
+        };
+
+        const usCountyBotFarms = Object.values(usCountyData)
+          .map(county => ({
+            ...county,
+            avgAccountAge: county.accountCount > 0
+              ? Math.round(county.totalAccountAge / county.accountCount)
+              : 0,
+            botFarmScore: calculateBotScore(county)
+          }))
+          .sort((a, b) => b.botFarmScore - a.botFarmScore)
+          .slice(0, 50);
+
+        const usStateBotFarms = Object.values(usStateData)
+          .map(state => ({
+            ...state,
+            avgAccountAge: state.accountCount > 0
+              ? Math.round(state.totalAccountAge / state.accountCount)
+              : 0,
+            botFarmScore: calculateBotScore(state)
+          }))
+          .sort((a, b) => b.botFarmScore - a.botFarmScore);
+
+        // US Heat map data (state code -> bot score)
+        const usHeatMapData = {};
+        usStateBotFarms.forEach(state => {
+          usHeatMapData[state.stateCode] = state.botFarmScore;
+        });
+
+        // Time-based velocity (posts per hour in last 24 hours)
+        const now = new Date();
+        const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+        const recentPosts = posts.filter(p => new Date(p.created_at) > oneDayAgo);
+        const postsPerMinute = recentPosts.length / (24 * 60);
+
+        // Build comprehensive metrics object
+        const metrics = {
+          postsPerMinute: parseFloat(postsPerMinute.toFixed(2)),
+          totalPosts,
+          sentiment: sentimentCounts,
+          velocity: Math.round(postsPerMinute * 60), // posts per hour
+          viralityRisk: Math.min(Math.round((recentPosts.length / 100) * 100), 100),
+          authenticityScore: Math.max(0, 100 - accountAgeRisk),
+          narrativeCoherence: avgSentiment > 0.5 ? 'High' : avgSentiment < -0.5 ? 'Low' : 'Medium',
+          responseWindow: 4.0, // hours - could be calculated from velocity
+          accountAgeRisk,
+          accountAgeDistribution: accountAgeBuckets,
+          averageAccountAge: avgAccountAge,
+          topCountries,
+          topRegions,
+          geoDistribution: geoData,
+          usCountyBotFarms,
+          usStateBotFarms,
+          usHeatMapData,
+          engagementRate: 0, // Could calculate from likes/retweets
+          coordinatedActivity: accountAgeRisk > 40 ? 1 : 0
+        };
+
+        console.log(`✅ [VITALS] Sending metrics for @${handle}: ${totalPosts} posts, ${usCountyBotFarms.length} US locations`);
+        console.log(`🗺️  [VITALS DEBUG] US Heat Map Data:`, JSON.stringify(usHeatMapData, null, 2));
+        console.log(`🔥 [VITALS DEBUG] US State Bot Farms (top 10):`, usStateBotFarms.slice(0, 10).map(s => `${s.stateCode}: ${s.botFarmScore}`).join(', '));
+        console.log(`📊 [VITALS DEBUG] US County Bot Farms (top 5):`, usCountyBotFarms.slice(0, 5).map(c => `${c.location}: ${c.botFarmScore}`).join(', '));
+
+        // Send metrics to frontend
+        socket.emit('metrics:update', metrics);
+
+        // Also send geo data via dedicated event (for the heat map component)
+        socket.emit('geo:data', {
+          usCountyBotFarms: usCountyBotFarms,
+          usHeatMapData: usHeatMapData
+        });
+        console.log(`🗺️  [VITALS] Sent geo:data event with ${usCountyBotFarms.length} counties and ${Object.keys(usHeatMapData).length} states`);
+
+      } finally {
+        client.release();
+      }
+
+    } catch (error) {
+      console.error(`❌ [VITALS] Error fetching vitals for @${handle}:`, error);
+      socket.emit('metrics:update', {
+        postsPerMinute: 0,
+        totalPosts: 0,
+        sentiment: { positive: 0, neutral: 0, negative: 0 },
+        velocity: 0
+      });
+    }
   });
 
   socket.on('disconnect', () => {

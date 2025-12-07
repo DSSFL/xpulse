@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import {
   ComposableMap,
   Geographies,
@@ -25,6 +25,26 @@ interface HotspotData {
   sentiment: number;
 }
 
+interface CountyBotData {
+  location: string;
+  stateCode: string;
+  fullName: string;
+  totalPosts: number;
+  newAccounts: number;
+  veryNewAccounts: number;
+  avgAccountAge: number;
+  botFarmScore: number;
+  sentiment: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+}
+
+interface GlobalHeatMapProps {
+  countyBotData?: CountyBotData[];
+}
+
 // Initial hotspot data - will be populated with real data from backend
 const initialHotspots: HotspotData[] = [];
 
@@ -44,6 +64,21 @@ const stateNames: { [key: string]: string } = {
   '42': 'Pennsylvania', '44': 'Rhode Island', '45': 'South Carolina', '46': 'South Dakota',
   '47': 'Tennessee', '48': 'Texas', '49': 'Utah', '50': 'Vermont', '51': 'Virginia',
   '53': 'Washington', '54': 'West Virginia', '55': 'Wisconsin', '56': 'Wyoming', '72': 'Puerto Rico',
+};
+
+// State FIPS codes to abbreviations (for matching backend data)
+const stateAbbreviations: { [key: string]: string } = {
+  '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA',
+  '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC',
+  '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL',
+  '18': 'IN', '19': 'IA', '20': 'KS', '21': 'KY', '22': 'LA',
+  '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN',
+  '28': 'MS', '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV',
+  '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY',
+  '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', '41': 'OR',
+  '42': 'PA', '44': 'RI', '45': 'SC', '46': 'SD',
+  '47': 'TN', '48': 'TX', '49': 'UT', '50': 'VT', '51': 'VA',
+  '53': 'WA', '54': 'WV', '55': 'WI', '56': 'WY', '72': 'PR',
 };
 
 interface GeoHoverInfo {
@@ -166,7 +201,7 @@ const worldCapitals: { name: string; country: string; coordinates: [number, numb
   { name: 'Caracas', country: 'Venezuela', coordinates: [-66.9036, 10.4806] },
 ];
 
-const GlobalHeatMap = () => {
+const GlobalHeatMap = ({ countyBotData = [] }: GlobalHeatMapProps) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('tweets');
   const [hoveredHotspot, setHoveredHotspot] = useState<HotspotData | null>(null);
   const [hoveredGeo, setHoveredGeo] = useState<GeoHoverInfo | null>(null);
@@ -178,6 +213,43 @@ const GlobalHeatMap = () => {
     coordinates: [-96, 38],
     zoom: 1,
   });
+
+  // Create lookup map for county bot scores
+  const countyBotLookup = useMemo(() => {
+    const lookup: Record<string, number> = {};
+    countyBotData.forEach(county => {
+      // Key by "Location, ST" format (e.g., "Watertown, WI")
+      lookup[county.fullName] = county.botFarmScore;
+    });
+
+    // Debug: Log backend data format
+    if (countyBotData.length > 0) {
+      console.log('🔍 Backend county bot data format:');
+      console.log('Sample entries:', countyBotData.slice(0, 3).map(c => ({
+        fullName: c.fullName,
+        location: c.location,
+        stateCode: c.stateCode,
+        score: c.botFarmScore
+      })));
+      console.log('Total entries:', countyBotData.length);
+      console.log('Lookup keys (first 10):', Object.keys(lookup).slice(0, 10));
+
+      console.warn('⚠️ IMPORTANT: Backend appears to send city/place names, NOT county names.');
+      console.warn('   Example: "Watertown, WI" is a city, but GeoJSON has "Jefferson County, WI"');
+      console.warn('   Direct matching may not work if backend data uses cities instead of counties.');
+    }
+
+    return lookup;
+  }, [countyBotData]);
+
+  // Get color based on bot farm score
+  const getBotFarmColor = (score: number) => {
+    if (score === 0 || !score) return '#4a9b7f'; // Default green for no data
+    if (score < 20) return '#16a34a'; // Low risk - green
+    if (score < 40) return '#eab308'; // Medium risk - yellow
+    if (score < 60) return '#f97316'; // High risk - orange
+    return '#ef4444'; // Critical risk - red
+  };
 
   // Update position when map view changes
   useEffect(() => {
@@ -363,16 +435,62 @@ const GlobalHeatMap = () => {
                 {/* US Counties (optional layer) */}
                 {showCounties && (
                   <Geographies geography={usCountiesUrl}>
-                    {({ geographies }) =>
-                      geographies.map(geo => {
+                    {({ geographies }) => {
+                      // Debug: Log first few counties to understand GeoJSON structure
+                      if (geographies.length > 0) {
+                        const samples = geographies.slice(0, 3).map(geo => ({
+                          id: geo.id,
+                          name: geo.properties.name,
+                          stateFIPS: String(geo.id).substring(0, 2),
+                          stateAbbrev: stateAbbreviations[String(geo.id).substring(0, 2)],
+                        }));
+                        console.log('🗺️ GeoJSON county structure samples:', samples);
+                      }
+
+                      return geographies.map(geo => {
                         const countyName = geo.properties.name || 'Unknown County';
-                        const stateCode = String(geo.id).substring(0, 2);
-                        const stateName = stateNames[stateCode] || 'Unknown State';
+                        const stateFIPS = String(geo.id).substring(0, 2);
+                        const stateAbbrev = stateAbbreviations[stateFIPS] || '';
+                        const stateName = stateNames[stateFIPS] || 'Unknown State';
+
+                        // Try multiple naming formats to match backend data
+                        // Backend sends: "City/Place, ST" (e.g., "Watertown, WI")
+                        // GeoJSON has: county name only (e.g., "Jefferson")
+
+                        // Strategy 1: Try "CountyName, ST" format
+                        const format1 = `${countyName}, ${stateAbbrev}`;
+
+                        // Strategy 2: Try "CountyName County, ST" format
+                        const format2 = `${countyName} County, ${stateAbbrev}`;
+
+                        // Strategy 3: Try without "County" suffix if it exists
+                        const cleanName = countyName.replace(/ County$/i, '');
+                        const format3 = `${cleanName}, ${stateAbbrev}`;
+
+                        // Look up bot farm score
+                        let botScore = countyBotLookup[format1] ||
+                                      countyBotLookup[format2] ||
+                                      countyBotLookup[format3] ||
+                                      0;
+
+                        // Debug: Log successful matches
+                        if (botScore > 0) {
+                          console.log('✅ County match found:', {
+                            geoCounty: countyName,
+                            state: stateAbbrev,
+                            matchedFormat: countyBotLookup[format1] ? format1 :
+                                          countyBotLookup[format2] ? format2 : format3,
+                            score: botScore
+                          });
+                        }
+
+                        const fillColor = getBotFarmColor(botScore);
+
                         return (
                           <Geography
                             key={geo.rsmKey}
                             geography={geo}
-                            fill="#4a9b7f"
+                            fill={fillColor}
                             stroke="#3d7a5f"
                             strokeWidth={0.2}
                             onMouseEnter={() => setHoveredGeo({ name: countyName, type: 'county', stateName })}
@@ -384,8 +502,8 @@ const GlobalHeatMap = () => {
                             }}
                           />
                         );
-                      })
-                    }
+                      });
+                    }}
                   </Geographies>
                 )}
 
