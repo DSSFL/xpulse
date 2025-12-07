@@ -59,7 +59,7 @@ const GlobalHeatMap = () => {
   const [mapView, setMapView] = useState<MapView>('usa');
   const [showCounties, setShowCounties] = useState(true);
   const [hotspots] = useState<HotspotData[]>(initialHotspots);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapError] = useState<string | null>(null);
   const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({
     coordinates: [-96, 38],
     zoom: 1,

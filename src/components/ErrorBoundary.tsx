@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Something went wrong
             </h3>
             <p className="text-x-gray-text mb-4">
-              This component encountered an error and couldn't render.
+              This component encountered an error and could not render.
             </p>
             <button
               onClick={() => window.location.reload()}
