@@ -16,7 +16,21 @@ export default function Home() {
   const [checkingSession, setCheckingSession] = useState(true);
 
   // Check if user already logged in - redirect to vitals if so
+  // Add ?signout to URL to clear session and show sign-in
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const signout = urlParams.get('signout');
+
+    // If signout param present, clear session and stay on sign-in page
+    if (signout) {
+      localStorage.removeItem('xpulse_handle');
+      localStorage.removeItem('xpulse_topics');
+      // Clean up URL
+      window.history.replaceState({}, '', '/');
+      setCheckingSession(false);
+      return;
+    }
+
     const savedHandle = localStorage.getItem('xpulse_handle');
     const savedTopics = localStorage.getItem('xpulse_topics');
 
