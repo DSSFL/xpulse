@@ -22,47 +22,24 @@ interface HotspotData {
   sentiment: number;
 }
 
-// Mock hotspot data - major cities with engagement metrics
-const mockHotspots: HotspotData[] = [
-  { id: 'nyc', name: 'New York', coordinates: [-74.006, 40.7128], tweets: 234500, retweets: 89200, quotes: 12300, hashtags: 45600, sentiment: 0.23 },
-  { id: 'la', name: 'Los Angeles', coordinates: [-118.2437, 34.0522], tweets: 187000, retweets: 67800, quotes: 9800, hashtags: 34500, sentiment: 0.45 },
-  { id: 'london', name: 'London', coordinates: [-0.1276, 51.5074], tweets: 312000, retweets: 145000, quotes: 23400, hashtags: 67800, sentiment: 0.12 },
-  { id: 'tokyo', name: 'Tokyo', coordinates: [139.6917, 35.6895], tweets: 456000, retweets: 198000, quotes: 34500, hashtags: 89000, sentiment: 0.67 },
-  { id: 'paris', name: 'Paris', coordinates: [2.3522, 48.8566], tweets: 145000, retweets: 56000, quotes: 8900, hashtags: 23400, sentiment: -0.15 },
-  { id: 'sydney', name: 'Sydney', coordinates: [151.2093, -33.8688], tweets: 78000, retweets: 34000, quotes: 5600, hashtags: 12300, sentiment: 0.34 },
-  { id: 'dubai', name: 'Dubai', coordinates: [55.2708, 25.2048], tweets: 123000, retweets: 45000, quotes: 7800, hashtags: 19000, sentiment: 0.56 },
-  { id: 'singapore', name: 'Singapore', coordinates: [103.8198, 1.3521], tweets: 98000, retweets: 41000, quotes: 6700, hashtags: 15600, sentiment: 0.41 },
-  { id: 'mumbai', name: 'Mumbai', coordinates: [72.8777, 19.076], tweets: 189000, retweets: 78000, quotes: 12000, hashtags: 34000, sentiment: 0.28 },
-  { id: 'saopaulo', name: 'São Paulo', coordinates: [-46.6333, -23.5505], tweets: 167000, retweets: 62000, quotes: 9400, hashtags: 28000, sentiment: -0.08 },
-  { id: 'berlin', name: 'Berlin', coordinates: [13.405, 52.52], tweets: 112000, retweets: 48000, quotes: 7200, hashtags: 21000, sentiment: 0.19 },
-  { id: 'toronto', name: 'Toronto', coordinates: [-79.3832, 43.6532], tweets: 134000, retweets: 52000, quotes: 8100, hashtags: 24000, sentiment: 0.38 },
-];
+// Initial hotspot data - will be populated with real data from backend
+const initialHotspots: HotspotData[] = [];
 
 type MetricType = 'tweets' | 'retweets' | 'quotes' | 'hashtags';
 
 const GlobalHeatMap = () => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('tweets');
   const [hoveredHotspot, setHoveredHotspot] = useState<HotspotData | null>(null);
-  const [hotspots, setHotspots] = useState<HotspotData[]>(mockHotspots);
+  const [hotspots, setHotspots] = useState<HotspotData[]>(initialHotspots);
   const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({
     coordinates: [0, 20],
     zoom: 1,
   });
 
-  // Simulate real-time updates
+  // TODO: Connect to backend WebSocket to get real geographic data
+  // For now, map is hidden until real data is available
   useEffect(() => {
-    const interval = setInterval(() => {
-      setHotspots(prev =>
-        prev.map(hotspot => ({
-          ...hotspot,
-          tweets: Math.max(0, hotspot.tweets + Math.floor(Math.random() * 200) - 80),
-          retweets: Math.max(0, hotspot.retweets + Math.floor(Math.random() * 100) - 40),
-          quotes: Math.max(0, hotspot.quotes + Math.floor(Math.random() * 40) - 15),
-          hashtags: Math.max(0, hotspot.hashtags + Math.floor(Math.random() * 60) - 25),
-        }))
-      );
-    }, 3000);
-    return () => clearInterval(interval);
+    // Will be replaced with real backend data stream
   }, []);
 
   const getMaxValue = () => Math.max(...hotspots.map(h => h[selectedMetric]));
