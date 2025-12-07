@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface UserSettings {
   name: string;
@@ -14,9 +15,10 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'display'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'display' | 'account'>('profile');
   const [settings, setSettings] = useState<UserSettings>({
     name: 'XPulse Admin',
     handle: '@XPulseAdmin',
@@ -80,16 +82,24 @@ export default function SettingsPage() {
     }, 500);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('xpulse_handle');
+    localStorage.removeItem('xpulse_topics');
+    localStorage.removeItem('xpulse_name');
+    localStorage.removeItem('xpulse_bio');
+    localStorage.removeItem('xpulse_profile_picture');
+    localStorage.removeItem('xpulse_settings');
+    router.push('/?signout=true');
+  };
+
   const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB');
         return;
       }
 
-      // Check file type
       if (!file.type.startsWith('image/')) {
         alert('Please upload an image file');
         return;
@@ -112,233 +122,284 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'profile' as const, name: 'Profile', icon: '👤' },
-    { id: 'display' as const, name: 'Display', icon: '🎨' },
+    { id: 'profile' as const, name: 'Profile' },
+    { id: 'display' as const, name: 'Display' },
+    { id: 'account' as const, name: 'Account' },
   ];
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-x-white mb-2">Settings</h1>
-          <p className="text-x-gray-text">Manage your XPulse account and preferences</p>
+    <div className="min-h-screen bg-black">
+      {/* X-style sticky header */}
+      <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-[#2F3336]">
+        <div className="px-4 py-3">
+          <h1 className="text-xl font-bold text-[#E7E9EA]">Settings</h1>
         </div>
 
-        {/* Save Message */}
-        {saveMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-vital-healthy/10 border border-vital-healthy flex items-center gap-3 animate-slide-up">
-            <svg className="w-5 h-5 text-vital-healthy" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-vital-healthy font-medium">{saveMessage}</span>
+        {/* X-style tab navigation */}
+        <div className="flex">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-4 text-sm font-medium transition-colors relative ${
+                activeTab === tab.id
+                  ? 'text-[#E7E9EA]'
+                  : 'text-[#71767B] hover:bg-[#E7E9EA]/5'
+              }`}
+            >
+              <span>{tab.name}</span>
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1D9BF0] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Save Message */}
+      {saveMessage && (
+        <div className="mx-4 mt-4 p-4 rounded-xl bg-[#00BA7C]/10 border border-[#00BA7C] flex items-center gap-3">
+          <svg className="w-5 h-5 text-[#00BA7C]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="text-[#00BA7C] font-medium">{saveMessage}</span>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="max-w-[600px] mx-auto">
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div>
+            {/* Profile Picture Section */}
+            <div className="px-4 py-6 border-b border-[#2F3336]">
+              <h2 className="text-[17px] font-bold text-[#E7E9EA] mb-4">Profile picture</h2>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-[#333639] flex items-center justify-center overflow-hidden border-2 border-[#2F3336]">
+                  {settings.profilePicture ? (
+                    <img src={settings.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-10 h-10 text-[#71767B]" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 rounded-full bg-[#E7E9EA] text-black text-sm font-bold hover:bg-[#D7D9DB] transition-colors"
+                  >
+                    Upload
+                  </button>
+                  {settings.profilePicture && (
+                    <button
+                      onClick={handleRemoveProfilePicture}
+                      className="px-4 py-2 rounded-full border border-[#536471] text-[#E7E9EA] text-sm font-bold hover:bg-[#E7E9EA]/10 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+              <p className="text-[#71767B] text-[13px] mt-3">Square image, at least 400x400px, max 5MB</p>
+            </div>
+
+            {/* Name */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <label className="block text-[#71767B] text-[13px] mb-1">Name</label>
+              <input
+                type="text"
+                value={settings.name}
+                onChange={(e) => setSettings(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Your name"
+                className="w-full bg-transparent text-[#E7E9EA] text-[17px] outline-none placeholder-[#71767B]"
+              />
+            </div>
+
+            {/* Handle */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <label className="block text-[#71767B] text-[13px] mb-1">Username</label>
+              <div className="flex items-center gap-1">
+                <span className="text-[#71767B] text-[17px]">@</span>
+                <input
+                  type="text"
+                  value={settings.handle.replace('@', '')}
+                  onChange={(e) => setSettings(prev => ({ ...prev, handle: e.target.value }))}
+                  placeholder="username"
+                  className="flex-1 bg-transparent text-[#E7E9EA] text-[17px] outline-none placeholder-[#71767B]"
+                />
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <label className="block text-[#71767B] text-[13px] mb-1">Bio</label>
+              <textarea
+                value={settings.bio}
+                onChange={(e) => setSettings(prev => ({ ...prev, bio: e.target.value }))}
+                placeholder="Tell us about yourself..."
+                rows={3}
+                className="w-full bg-transparent text-[#E7E9EA] text-[15px] outline-none placeholder-[#71767B] resize-none"
+              />
+              <p className="text-[#71767B] text-[13px] mt-1">{settings.bio.length}/160</p>
+            </div>
+
+            {/* Save Button */}
+            <div className="px-4 py-4">
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSaving}
+                className="w-full py-3 rounded-full bg-[#E7E9EA] text-black font-bold text-[15px] hover:bg-[#D7D9DB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </button>
+            </div>
           </div>
         )}
 
-        <div className="flex gap-6">
-          {/* Sidebar Tabs */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-x-gray-dark border border-x-gray-border rounded-2xl p-2">
-              {tabs.map((tab) => (
+        {/* Display Tab */}
+        {activeTab === 'display' && (
+          <div>
+            {/* Theme */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-[15px] font-bold text-[#E7E9EA]">Theme</h3>
+                  <p className="text-[13px] text-[#71767B]">Select your preferred theme</p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-x-gray-light text-x-white font-medium'
-                      : 'text-x-gray-text hover:bg-x-gray hover:text-x-white'
+                  onClick={() => setSettings(prev => ({ ...prev, display: { ...prev.display, theme: 'dark' } }))}
+                  className={`flex-1 py-3 rounded-xl border transition-colors ${
+                    settings.display.theme === 'dark'
+                      ? 'border-[#1D9BF0] bg-[#1D9BF0]/10 text-[#1D9BF0]'
+                      : 'border-[#2F3336] text-[#71767B] hover:bg-[#16181C]'
                   }`}
                 >
-                  <span className="text-xl">{tab.icon}</span>
-                  <span>{tab.name}</span>
+                  Dark
                 </button>
-              ))}
+                <button
+                  onClick={() => setSettings(prev => ({ ...prev, display: { ...prev.display, theme: 'light' } }))}
+                  className={`flex-1 py-3 rounded-xl border transition-colors ${
+                    settings.display.theme === 'light'
+                      ? 'border-[#1D9BF0] bg-[#1D9BF0]/10 text-[#1D9BF0]'
+                      : 'border-[#2F3336] text-[#71767B] hover:bg-[#16181C]'
+                  }`}
+                >
+                  Light
+                </button>
+              </div>
+              <p className="text-[#71767B] text-[13px] mt-2">Light theme coming soon</p>
+            </div>
+
+            {/* Compact Mode */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-[15px] font-bold text-[#E7E9EA]">Compact mode</h3>
+                  <p className="text-[13px] text-[#71767B]">Reduce spacing for more content</p>
+                </div>
+                <button
+                  onClick={() => setSettings(prev => ({
+                    ...prev,
+                    display: { ...prev.display, compactMode: !prev.display.compactMode }
+                  }))}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${
+                    settings.display.compactMode ? 'bg-[#1D9BF0]' : 'bg-[#3E4144]'
+                  }`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white transition-transform ${
+                    settings.display.compactMode ? 'translate-x-5' : ''
+                  }`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="px-4 py-4">
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSaving}
+                className="w-full py-3 rounded-full bg-[#E7E9EA] text-black font-bold text-[15px] hover:bg-[#D7D9DB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </button>
             </div>
           </div>
+        )}
 
-          {/* Content Area */}
-          <div className="flex-1">
-            <div className="bg-x-gray-dark border border-x-gray-border rounded-2xl p-8">
+        {/* Account Tab */}
+        {activeTab === 'account' && (
+          <div>
+            {/* Current Session */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <h3 className="text-[15px] font-bold text-[#E7E9EA] mb-1">Current session</h3>
+              <p className="text-[13px] text-[#71767B]">
+                Logged in as <span className="text-[#E7E9EA]">{settings.handle}</span>
+              </p>
+            </div>
 
-              {/* Profile Tab */}
-              {activeTab === 'profile' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-x-white mb-4">Profile Settings</h2>
-                    <p className="text-x-gray-text mb-6">Manage your public profile information</p>
-                  </div>
+            {/* Logout */}
+            <div className="px-4 py-4 border-b border-[#2F3336]">
+              <button
+                onClick={handleLogout}
+                className="w-full py-3 rounded-full border border-[#F4212E] text-[#F4212E] font-bold text-[15px] hover:bg-[#F4212E]/10 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Log out
+              </button>
+              <p className="text-[#71767B] text-[13px] mt-3 text-center">
+                This will clear your session and return you to the sign-in page
+              </p>
+            </div>
 
-                  {/* Profile Picture */}
-                  <div>
-                    <label className="block text-x-white font-medium mb-3">Profile Picture</label>
-                    <div className="flex items-center gap-6">
-                      <div className="relative w-24 h-24 rounded-full bg-x-gray-light flex items-center justify-center overflow-hidden border-2 border-x-gray-border">
-                        {settings.profilePicture ? (
-                          <img src={settings.profilePicture} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                          <svg className="w-12 h-12 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="px-4 py-2 rounded-lg bg-pulse-blue text-white font-medium hover:bg-pulse-blue/90 transition-colors"
-                        >
-                          Upload Photo
-                        </button>
-                        {settings.profilePicture && (
-                          <button
-                            onClick={handleRemoveProfilePicture}
-                            className="px-4 py-2 rounded-lg bg-x-gray-light text-x-white hover:bg-x-gray-border transition-colors"
-                          >
-                            Remove
-                          </button>
-                        )}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleProfilePictureChange}
-                          className="hidden"
-                        />
-                      </div>
-                    </div>
-                    <p className="text-x-gray-text text-sm mt-2">Recommended: Square image, at least 400x400px, max 5MB</p>
-                  </div>
-
-                  {/* Name */}
-                  <div>
-                    <label className="block text-x-white font-medium mb-2">Display Name</label>
-                    <input
-                      type="text"
-                      value={settings.name}
-                      onChange={(e) => setSettings(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Your Name"
-                      className="w-full px-4 py-3 rounded-xl bg-x-gray-light border border-x-gray-border text-x-white placeholder-x-gray-text focus:outline-none focus:border-pulse-blue focus:ring-2 focus:ring-pulse-blue/20 transition-all"
-                    />
-                  </div>
-
-                  {/* Handle */}
-                  <div>
-                    <label className="block text-x-white font-medium mb-2">X Handle</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-x-gray-text">@</span>
-                      <input
-                        type="text"
-                        value={settings.handle.replace('@', '')}
-                        onChange={(e) => setSettings(prev => ({ ...prev, handle: e.target.value }))}
-                        placeholder="username"
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-x-gray-light border border-x-gray-border text-x-white placeholder-x-gray-text focus:outline-none focus:border-pulse-blue focus:ring-2 focus:ring-pulse-blue/20 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Bio */}
-                  <div>
-                    <label className="block text-x-white font-medium mb-2">Bio</label>
-                    <textarea
-                      value={settings.bio}
-                      onChange={(e) => setSettings(prev => ({ ...prev, bio: e.target.value }))}
-                      placeholder="Tell us about yourself..."
-                      rows={4}
-                      className="w-full px-4 py-3 rounded-xl bg-x-gray-light border border-x-gray-border text-x-white placeholder-x-gray-text focus:outline-none focus:border-pulse-blue focus:ring-2 focus:ring-pulse-blue/20 transition-all resize-none"
-                    />
-                    <p className="text-x-gray-text text-sm mt-2">{settings.bio.length}/160 characters</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Display Tab */}
-              {activeTab === 'display' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-x-white mb-4">Display Settings</h2>
-                    <p className="text-x-gray-text mb-6">Customize how XPulse looks and feels</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Theme */}
-                    <div className="p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <p className="text-x-white font-medium mb-3">Theme</p>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => setSettings(prev => ({ ...prev, display: { ...prev.display, theme: 'dark' } }))}
-                          className={`flex-1 px-4 py-3 rounded-lg transition-all ${
-                            settings.display.theme === 'dark'
-                              ? 'bg-pulse-blue text-white'
-                              : 'bg-x-gray-light text-x-gray-text hover:text-x-white'
-                          }`}
-                        >
-                          🌙 Dark
-                        </button>
-                        <button
-                          onClick={() => setSettings(prev => ({ ...prev, display: { ...prev.display, theme: 'light' } }))}
-                          className={`flex-1 px-4 py-3 rounded-lg transition-all ${
-                            settings.display.theme === 'light'
-                              ? 'bg-pulse-blue text-white'
-                              : 'bg-x-gray-light text-x-gray-text hover:text-x-white'
-                          }`}
-                        >
-                          ☀️ Light
-                        </button>
-                      </div>
-                      <p className="text-x-gray-text text-sm mt-2">Light theme coming soon</p>
-                    </div>
-
-                    {/* Compact Mode */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-x-gray/50 border border-x-gray-border">
-                      <div>
-                        <p className="text-x-white font-medium">Compact Mode</p>
-                        <p className="text-x-gray-text text-sm">Reduce spacing for more content</p>
-                      </div>
-                      <button
-                        onClick={() => setSettings(prev => ({
-                          ...prev,
-                          display: { ...prev.display, compactMode: !prev.display.compactMode }
-                        }))}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${
-                          settings.display.compactMode ? 'bg-pulse-blue' : 'bg-x-gray-border'
-                        }`}
-                      >
-                        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                          settings.display.compactMode ? 'translate-x-6' : ''
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Save Button */}
-              <div className="mt-8 pt-8 border-t border-x-gray-border">
+            {/* Danger Zone */}
+            <div className="px-4 py-6">
+              <h3 className="text-[15px] font-bold text-[#F4212E] mb-3">Danger zone</h3>
+              <div className="p-4 rounded-xl border border-[#F4212E]/30 bg-[#F4212E]/5">
+                <h4 className="text-[15px] font-bold text-[#E7E9EA] mb-1">Clear all data</h4>
+                <p className="text-[13px] text-[#71767B] mb-3">
+                  This will permanently delete all your saved preferences and profile data.
+                </p>
                 <button
-                  onClick={handleSaveSettings}
-                  disabled={isSaving}
-                  className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-pulse-purple to-pulse-blue text-white font-bold text-lg hover:shadow-lg hover:shadow-pulse-purple/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  onClick={() => {
+                    if (confirm('Are you sure? This action cannot be undone.')) {
+                      localStorage.clear();
+                      router.push('/?signout=true');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-[#F4212E] text-white text-sm font-bold hover:bg-[#F4212E]/90 transition-colors"
                 >
-                  {isSaving ? (
-                    <>
-                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Save Changes
-                    </>
-                  )}
+                  Clear all data
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
