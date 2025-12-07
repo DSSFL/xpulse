@@ -119,7 +119,6 @@ export default function USBotFarmHeatMap({ metrics, handle }: USBotFarmHeatMapPr
             {({ geographies }) =>
               geographies.map((geo) => {
                 const stateCode = geo.properties.name; // State abbreviation
-                const score = metrics.usHeatMapData[stateCode] || 0;
 
                 return (
                   <Geography
