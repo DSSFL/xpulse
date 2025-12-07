@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { io } from 'socket.io-client';
 import LiveDashboard from '@/components/LiveDashboard';
+import VortexLoader from '@/components/VortexLoader';
 
-export default function VitalsPage() {
+function VitalsContent() {
   const searchParams = useSearchParams();
   const handle = searchParams.get('handle');
   const topics = searchParams.get('topics');
@@ -50,5 +51,13 @@ export default function VitalsPage() {
         <LiveDashboard />
       </div>
     </div>
+  );
+}
+
+export default function VitalsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><VortexLoader message="Loading dashboard..." /></div>}>
+      <VitalsContent />
+    </Suspense>
   );
 }
