@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import { EnrichedTweet } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
 import VortexLoader from '@/components/VortexLoader';
@@ -42,6 +42,8 @@ function MonitorContent() {
   const [error, setError] = useState<string | null>(null);
   const [usernameInput, setUsernameInput] = useState('');
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://api.xpulse.buzz';
@@ -53,6 +55,8 @@ function MonitorContent() {
       reconnectionDelay: 1000,
       reconnectionAttempts: 5
     });
+
+    socketRef.current = socketInstance;
 
     socketInstance.on('connect', () => {
       console.log('✅ [MONITOR] Connected to backend');
@@ -133,6 +137,19 @@ function MonitorContent() {
       setIsLoading(false);
     });
 
+    // Handle metrics refresh response
+    socketInstance.on('posts:metrics-updated', (updatedPosts: Array<{ id: string; public_metrics: EnrichedTweet['public_metrics'] }>) => {
+      console.log('📊 [MONITOR] Metrics updated for', updatedPosts.length, 'posts');
+      setTweets(prev => prev.map(tweet => {
+        const updated = updatedPosts.find(p => p.id === tweet.id);
+        if (updated) {
+          return { ...tweet, public_metrics: updated.public_metrics };
+        }
+        return tweet;
+      }));
+      setIsRefreshing(false);
+    });
+
     return () => {
       socketInstance.emit('monitor:stop');
       socketInstance.disconnect();
@@ -143,6 +160,16 @@ function MonitorContent() {
   useEffect(() => {
     setDisplayCount(10);
   }, [activityFilter, sentimentFilter]);
+
+  // Refresh engagement metrics for all displayed posts
+  const handleRefreshMetrics = useCallback(() => {
+    if (!socketRef.current || !isConnected || tweets.length === 0 || isRefreshing) return;
+
+    setIsRefreshing(true);
+    const postIds = tweets.map(t => t.id);
+    console.log('🔄 [MONITOR] Requesting metrics refresh for', postIds.length, 'posts');
+    socketRef.current.emit('posts:refresh-metrics', { postIds });
+  }, [isConnected, tweets, isRefreshing]);
 
   if (error) {
     return (
@@ -227,6 +254,32 @@ function MonitorContent() {
               <span className="text-sm text-x-white font-medium">{filteredTweets.length}</span>
               <span className="text-sm text-x-gray-text ml-1">activities</span>
             </div>
+            {/* Refresh Metrics Button */}
+            <button
+              onClick={handleRefreshMetrics}
+              disabled={!isConnected || tweets.length === 0 || isRefreshing}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-colors ${
+                isRefreshing
+                  ? 'bg-pulse-blue/20 border-pulse-blue text-pulse-blue'
+                  : 'bg-x-gray-dark border-x-gray-border text-x-gray-text hover:border-pulse-blue hover:text-pulse-blue'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title="Refresh engagement metrics"
+            >
+              <svg
+                className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span className="text-sm font-medium">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
           </div>
         </div>
 
