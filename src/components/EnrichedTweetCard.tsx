@@ -19,179 +19,147 @@ function EnrichedPostCard({ post }: EnrichedPostCardProps) {
   };
 
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return '';
     try {
       const date = new Date(dateString);
       const now = new Date();
       const diff = now.getTime() - date.getTime();
       const minutes = Math.floor(diff / 60000);
       const hours = Math.floor(diff / 3600000);
-      const days = Math.floor(diff / 86400000);
 
-      if (minutes < 1) return 'Just now';
+      if (minutes < 1) return 'now';
       if (minutes < 60) return `${minutes}m`;
       if (hours < 24) return `${hours}h`;
-      return `${days}d`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
-      return 'Unknown';
+      return '';
     }
   };
 
   const sentiment = post.sentiment || 'neutral';
 
-  const sentimentColor = {
-    positive: 'text-vital-healthy',
-    negative: 'text-vital-critical',
-    neutral: 'text-vital-neutral'
-  }[sentiment] || 'text-x-gray-text';
-
-  const sentimentBg = {
-    positive: 'bg-vital-healthy/10 border-vital-healthy/30',
-    negative: 'bg-vital-critical/10 border-vital-critical/30',
-    neutral: 'bg-vital-neutral/10 border-vital-neutral/30'
-  }[sentiment] || 'bg-x-gray-dark border-x-gray-border';
+  const sentimentIndicator = {
+    positive: 'bg-[#00BA7C]',
+    negative: 'bg-[#F4212E]',
+    neutral: 'bg-[#1D9BF0]'
+  }[sentiment] || 'bg-[#1D9BF0]';
 
   return (
-    <div className={`p-4 rounded-xl border transition-all hover:border-x-blue hover:bg-x-gray-dark/50 ${sentimentBg}`}>
-      {/* Header - User Info */}
-      <div className="flex items-start gap-3 mb-3">
+    <article className="px-4 py-3 border-b border-[#2F3336] hover:bg-[#080808] transition-colors cursor-pointer">
+      <div className="flex gap-3">
         {/* Profile Picture */}
-        <div className="relative flex-shrink-0">
-          {!imageError ? (
+        <div className="flex-shrink-0">
+          {!imageError && post.author.profile_image_url ? (
             <Image
               src={post.author.profile_image_url}
               alt={post.author.name}
-              width={48}
-              height={48}
+              width={40}
+              height={40}
               className="rounded-full"
               unoptimized
               loading="lazy"
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-x-gray-light flex items-center justify-center">
-              <span className="text-x-white text-lg font-bold">
+            <div className="w-10 h-10 rounded-full bg-[#333639] flex items-center justify-center">
+              <span className="text-[#E7E9EA] text-sm font-bold">
                 {post.author.name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
-          {post.author.verified && (
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-pulse-blue rounded-full flex items-center justify-center border-2 border-x-black">
-              <svg className="w-3 h-3 text-x-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-              </svg>
-            </div>
-          )}
         </div>
 
-        {/* User Details */}
+        {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-x-white font-bold truncate">{post.author.name}</span>
+          {/* Header */}
+          <div className="flex items-center gap-1 text-[15px]">
+            <span className="font-bold text-[#E7E9EA] truncate hover:underline">
+              {post.author.name}
+            </span>
             {post.author.verified && (
-              <svg className="w-4 h-4 text-pulse-blue flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+              <svg className="w-[18px] h-[18px] text-[#1D9BF0]" viewBox="0 0 22 22" fill="currentColor">
+                <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" />
               </svg>
             )}
-            <span className="text-x-gray-text text-sm truncate">@{post.author.username}</span>
-            <span className="text-x-gray-text text-sm">·</span>
-            <span className="text-x-gray-text text-sm">{formatDate(post.created_at)}</span>
+            <span className="text-[#71767B] truncate">@{post.author.username}</span>
+            <span className="text-[#71767B]">·</span>
+            <time className="text-[#71767B] hover:underline">{formatDate(post.created_at)}</time>
+            {/* Sentiment dot */}
+            <div className={`w-2 h-2 rounded-full ml-auto ${sentimentIndicator}`} title={`${sentiment} sentiment`} />
           </div>
-          {post.author.description && (
-            <p className="text-x-gray-text text-xs mt-1 truncate">{post.author.description}</p>
-          )}
-        </div>
 
-        {/* Sentiment Badge */}
-        <div className={`px-2 py-1 rounded-full text-xs font-medium ${sentimentColor} bg-x-gray-dark border border-current/30`}>
-          {sentiment}
-        </div>
-      </div>
-
-      {/* Post Text */}
-      <p className="text-x-white text-sm mb-3 leading-relaxed">{post.text}</p>
-
-      {/* Hashtags */}
-      {post.entities?.hashtags && post.entities.hashtags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {post.entities.hashtags.slice(0, 5).map((hashtag, index) => (
-            <span
-              key={index}
-              className="text-xs text-pulse-blue bg-pulse-blue/10 px-2 py-1 rounded-full border border-pulse-blue/30"
-            >
-              #{hashtag.tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Engagement Metrics */}
-      <div className="flex items-center gap-6 pt-3 border-t border-x-gray-border">
-        {/* Likes */}
-        <div className="flex items-center gap-1.5 text-x-gray-text hover:text-vital-critical transition-colors cursor-pointer group">
-          <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-          <span className="text-xs font-medium">{formatNumber(post.public_metrics.like_count)}</span>
-        </div>
-
-        {/* Reposts */}
-        <div className="flex items-center gap-1.5 text-x-gray-text hover:text-vital-healthy transition-colors cursor-pointer group">
-          <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span className="text-xs font-medium">{formatNumber(post.public_metrics.repost_count)}</span>
-        </div>
-
-        {/* Replies */}
-        <div className="flex items-center gap-1.5 text-x-gray-text hover:text-pulse-blue transition-colors cursor-pointer group">
-          <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          <span className="text-xs font-medium">{formatNumber(post.public_metrics.reply_count)}</span>
-        </div>
-
-        {/* Impressions */}
-        <div className="flex items-center gap-1.5 text-x-gray-text hover:text-pulse-purple transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          <span className="text-xs font-medium">{formatNumber(post.public_metrics.impression_count)}</span>
-        </div>
-
-        {/* Bot Probability Indicator */}
-        {post.bot_probability > 0.5 && (
-          <div className="ml-auto flex items-center gap-1 text-vital-warning text-xs">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            <span>Bot?</span>
+          {/* Post Text */}
+          <div className="mt-1 text-[15px] text-[#E7E9EA] leading-5 whitespace-pre-wrap break-words">
+            {post.text}
           </div>
-        )}
-      </div>
 
-      {/* Additional Metadata */}
-      <div className="flex items-center gap-4 mt-2 pt-2 border-t border-x-gray-border/50">
-        {post.source && (
-          <span className="text-xs text-x-gray-text">
-            via {post.source}
-          </span>
-        )}
-        {post.author.location && (
-          <span className="text-xs text-x-gray-text flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {post.author.location}
-          </span>
-        )}
-        <span className="text-xs text-x-gray-text ml-auto">
-          {formatNumber(post.author.followers_count)} followers
-        </span>
+          {/* Engagement Actions - X Style */}
+          <div className="flex items-center justify-between mt-3 max-w-[425px]">
+            {/* Reply */}
+            <div className="flex items-center group">
+              <div className="p-2 rounded-full group-hover:bg-[#1D9BF0]/10 transition-colors">
+                <svg className="w-[18px] h-[18px] text-[#71767B] group-hover:text-[#1D9BF0]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z" />
+                </svg>
+              </div>
+              <span className="text-[13px] text-[#71767B] group-hover:text-[#1D9BF0]">
+                {formatNumber(post.public_metrics.reply_count)}
+              </span>
+            </div>
+
+            {/* Repost */}
+            <div className="flex items-center group">
+              <div className="p-2 rounded-full group-hover:bg-[#00BA7C]/10 transition-colors">
+                <svg className="w-[18px] h-[18px] text-[#71767B] group-hover:text-[#00BA7C]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z" />
+                </svg>
+              </div>
+              <span className="text-[13px] text-[#71767B] group-hover:text-[#00BA7C]">
+                {formatNumber(post.public_metrics.repost_count)}
+              </span>
+            </div>
+
+            {/* Like */}
+            <div className="flex items-center group">
+              <div className="p-2 rounded-full group-hover:bg-[#F91880]/10 transition-colors">
+                <svg className="w-[18px] h-[18px] text-[#71767B] group-hover:text-[#F91880]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91zm4.187 7.69c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z" />
+                </svg>
+              </div>
+              <span className="text-[13px] text-[#71767B] group-hover:text-[#F91880]">
+                {formatNumber(post.public_metrics.like_count)}
+              </span>
+            </div>
+
+            {/* Views */}
+            <div className="flex items-center group">
+              <div className="p-2 rounded-full group-hover:bg-[#1D9BF0]/10 transition-colors">
+                <svg className="w-[18px] h-[18px] text-[#71767B] group-hover:text-[#1D9BF0]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z" />
+                </svg>
+              </div>
+              <span className="text-[13px] text-[#71767B] group-hover:text-[#1D9BF0]">
+                {formatNumber(post.public_metrics.impression_count)}
+              </span>
+            </div>
+
+            {/* Share/Bookmark */}
+            <div className="flex items-center">
+              <div className="p-2 rounded-full hover:bg-[#1D9BF0]/10 transition-colors">
+                <svg className="w-[18px] h-[18px] text-[#71767B] hover:text-[#1D9BF0]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z" />
+                </svg>
+              </div>
+              <div className="p-2 rounded-full hover:bg-[#1D9BF0]/10 transition-colors">
+                <svg className="w-[18px] h-[18px] text-[#71767B] hover:text-[#1D9BF0]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.59l5.7 5.7-1.41 1.42L13 6.41V16h-2V6.41l-3.3 3.3-1.41-1.42L12 2.59zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 

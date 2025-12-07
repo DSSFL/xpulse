@@ -191,29 +191,26 @@ export default function LiveDashboard() {
   };
 
   return (
-    <div className="min-h-screen p-6 lg:p-8">
-      {/* Header */}
-      <header className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-x-white">
-              Intelligence Dashboard
-            </h1>
-            <p className="text-x-gray-text text-sm mt-1">
-              Real-time narrative intelligence powered by Grok
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-x-gray-dark border border-x-gray-border">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-vital-healthy animate-pulse' : 'bg-vital-critical'}`} />
-              <span className="text-sm text-x-gray-text">{isConnected ? 'Live' : 'Offline'}</span>
+    <div className="min-h-screen bg-black">
+      {/* X-style sticky header */}
+      <header className="sticky top-0 z-10 border-b border-[#2F3336] bg-black/80 backdrop-blur-md">
+        <div className="flex items-center justify-between px-4 py-3">
+          <h1 className="text-xl font-bold text-[#E7E9EA]">
+            Intelligence Dashboard
+          </h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#16181C]">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#00BA7C] animate-pulse' : 'bg-[#F4212E]'}`} />
+              <span className="text-[13px] text-[#71767B]">{isConnected ? 'Live' : 'Offline'}</span>
             </div>
-            <span className="text-x-gray-text text-sm">
-              Last updated: <span className="text-x-white">{lastUpdate}</span>
+            <span className="text-[#71767B] text-[13px]">
+              {lastUpdate}
             </span>
           </div>
         </div>
       </header>
+
+      <div className="p-4">
 
       {/* Main EKG Banner */}
       <section className="mb-8 p-6 rounded-2xl bg-x-gray-dark border border-x-gray-border relative overflow-hidden">
@@ -512,12 +509,13 @@ export default function LiveDashboard() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-12 pt-6 border-t border-x-gray-border">
-        <div className="flex items-center justify-between text-x-gray-text text-sm">
+      <footer className="mt-8 pt-4 border-t border-[#2F3336]">
+        <div className="flex items-center justify-between text-[#71767B] text-[13px]">
           <p>XPulse - Real-time Narrative Intelligence</p>
           <p>xpulse.buzz</p>
         </div>
       </footer>
+      </div>
 
       {/* Threat Details Modal */}
       <ThreatDetailsModal

@@ -1,53 +1,52 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 const navItems = [
   {
     name: 'Vitals',
-    basePath: '/',
+    href: '/',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.5 12h3l2-4 3 8 2-4h3.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+        <path d="M12 1.696L.622 8.807l1.06 1.696L3 9.679V19.5C3 20.881 4.119 22 5.5 22h13c1.381 0 2.5-1.119 2.5-2.5V9.679l1.318.824 1.06-1.696L12 1.696zM12 16.5c-1.933 0-3.5-1.567-3.5-3.5s1.567-3.5 3.5-3.5 3.5 1.567 3.5 3.5-1.567 3.5-3.5 3.5z" />
       </svg>
     ),
   },
   {
     name: 'Monitor',
-    basePath: '/monitor',
+    href: '/monitor',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+        <path d="M10.25 3.75c-3.59 0-6.5 2.91-6.5 6.5s2.91 6.5 6.5 6.5c1.795 0 3.419-.726 4.596-1.904 1.178-1.177 1.904-2.801 1.904-4.596 0-3.59-2.91-6.5-6.5-6.5zm-8.5 6.5c0-4.694 3.806-8.5 8.5-8.5s8.5 3.806 8.5 8.5c0 1.986-.682 3.815-1.824 5.262l4.781 4.781-1.414 1.414-4.781-4.781c-1.447 1.142-3.276 1.824-5.262 1.824-4.694 0-8.5-3.806-8.5-8.5z" />
       </svg>
     ),
   },
   {
     name: 'Analyze',
-    basePath: '/analyze',
+    href: '/analyze',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+        <path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z" />
       </svg>
     ),
   },
   {
     name: 'Signal',
-    basePath: '/signal',
+    href: '/signal',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+        <path d="M19.993 9.042C19.48 5.017 16.054 2 11.996 2s-7.49 3.021-7.999 7.051L2.866 18H7.1c.463 2.282 2.481 4 4.9 4s4.437-1.718 4.9-4h4.236l-1.143-8.958zM12 20c-1.306 0-2.417-.835-2.829-2h5.658c-.412 1.165-1.523 2-2.829 2zm-6.866-4l.847-6.698C6.364 6.272 8.941 4 11.996 4s5.627 2.268 6.013 5.295L18.864 16H5.134z" />
       </svg>
     ),
     badge: 3,
   },
   {
     name: 'Get XPulse',
-    basePath: '/get-xpulse',
+    href: '/get-xpulse',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+        <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-1-13v4.414l3.293 3.293 1.414-1.414L13 10.586V7h-2z" />
       </svg>
     ),
   },
@@ -56,11 +55,10 @@ const navItems = [
 const bottomNavItems = [
   {
     name: 'Settings',
-    basePath: '/settings',
+    href: '/settings',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+        <path d="M10.54 1.75h2.92l1.57 2.36c.11.17.32.25.53.21l2.53-.59 2.17 2.17-.58 2.54c-.04.2.04.41.21.53l2.36 1.57v2.92l-2.36 1.57c-.17.11-.25.32-.21.53l.58 2.54-2.17 2.17-2.53-.59c-.2-.04-.42.04-.53.21l-1.57 2.36h-2.92l-1.58-2.36c-.11-.17-.32-.25-.52-.21l-2.54.59-2.17-2.17.58-2.54c.04-.2-.03-.41-.21-.53l-2.35-1.57v-2.92L4.1 8.97c.17-.12.25-.33.21-.53L3.73 5.9 5.9 3.73l2.54.59c.2.04.41-.04.52-.21l1.58-2.36zm1.07 2l-.98 1.47C10.05 6.08 9 6.5 7.99 6.27l-1.46-.34-.6.6.33 1.46c.24 1.01-.18 2.07-1.05 2.64l-1.46.98v.78l1.46.98c.87.57 1.29 1.63 1.05 2.64l-.33 1.46.6.6 1.46-.34c1.01-.23 2.06.19 2.64 1.05l.98 1.47h.78l.97-1.47c.58-.86 1.63-1.28 2.65-1.05l1.45.34.61-.6-.34-1.46c-.23-1.01.18-2.07 1.05-2.64l1.47-.98v-.78l-1.47-.98c-.87-.57-1.28-1.63-1.05-2.64l.34-1.46-.61-.6-1.45.34c-1.02.23-2.07-.19-2.65-1.05l-.97-1.47h-.78zM12 8c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
       </svg>
     ),
   },
@@ -68,79 +66,45 @@ const bottomNavItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const [profileData, setProfileData] = useState({
-    name: 'XPulse Admin',
-    handle: '@XPulseAdmin',
-    profilePicture: '',
-  });
-
-  // Load profile data from localStorage
-  useEffect(() => {
-    const savedName = localStorage.getItem('xpulse_name');
-    const savedHandle = localStorage.getItem('xpulse_handle');
-    const savedProfilePicture = localStorage.getItem('xpulse_profile_picture');
-
-    setProfileData({
-      name: savedName || 'XPulse Admin',
-      handle: savedHandle ? (savedHandle.startsWith('@') ? savedHandle : `@${savedHandle}`) : '@XPulseAdmin',
-      profilePicture: savedProfilePicture || '',
-    });
-  }, []);
-
-  // Build href with preserved query params
-  const buildHref = (basePath: string) => {
-    const handle = searchParams.get('handle');
-    const topics = searchParams.get('topics');
-
-    const params = new URLSearchParams();
-    if (handle) params.set('handle', handle);
-    if (topics) params.set('topics', topics);
-
-    const query = params.toString();
-    return query ? `${basePath}?${query}` : basePath;
-  };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[68px] xl:w-[275px] border-r border-x-gray-border bg-x-black flex flex-col">
+    <aside className="fixed left-0 top-0 h-screen w-[68px] xl:w-[275px] border-r border-[#2F3336] bg-black flex flex-col">
       {/* Logo */}
-      <div className="p-4 xl:px-4 xl:py-6">
-        <Link href={buildHref('/')} className="flex items-center">
+      <div className="p-3 xl:px-3 xl:py-3">
+        <Link href="/" className="flex items-center justify-center xl:justify-start w-[50px] h-[50px] xl:w-auto rounded-full hover:bg-[#181818] transition-colors">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/xpulse-logo.png"
             alt="XPulse"
-            className="h-8 xl:h-10 w-auto"
+            className="h-8 xl:h-8 w-auto xl:ml-3"
           />
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 xl:px-3 py-4">
+      <nav className="flex-1 px-2 xl:px-3 py-1">
         <ul className="space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.basePath;
-            const href = buildHref(item.basePath);
+            const isActive = pathname === item.href;
             return (
               <li key={item.name}>
                 <Link
-                  href={href}
-                  className={`flex items-center gap-4 px-3 py-3 rounded-full transition-colors ${
-                    isActive
-                      ? 'bg-x-gray-light text-x-white font-bold'
-                      : 'text-x-white hover:bg-x-gray-dark'
+                  href={item.href}
+                  className={`flex items-center justify-center xl:justify-start gap-5 p-3 rounded-full transition-colors hover:bg-[#181818] ${
+                    isActive ? 'font-bold' : 'font-normal'
                   }`}
                 >
-                  <span className="relative">
+                  <span className="relative text-[#E7E9EA]">
                     {item.icon}
                     {item.badge && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-vital-critical text-[10px] font-bold rounded-full flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#1D9BF0] text-[11px] font-bold rounded-full flex items-center justify-center text-white px-1">
                         {item.badge}
                       </span>
                     )}
                   </span>
-                  <span className="hidden xl:block text-lg">{item.name}</span>
+                  <span className={`hidden xl:block text-xl text-[#E7E9EA] ${isActive ? 'font-bold' : ''}`}>
+                    {item.name}
+                  </span>
                 </Link>
               </li>
             );
@@ -149,68 +113,50 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="px-2 xl:px-3 pb-4">
+      <div className="px-2 xl:px-3 pb-3">
         <ul className="space-y-1">
           {bottomNavItems.map((item) => {
-            const isActive = pathname === item.basePath;
-            const href = buildHref(item.basePath);
+            const isActive = pathname === item.href;
             return (
               <li key={item.name}>
                 <Link
-                  href={href}
-                  className={`flex items-center gap-4 px-3 py-3 rounded-full transition-colors ${
-                    isActive
-                      ? 'bg-x-gray-light text-x-white font-bold'
-                      : 'text-x-white hover:bg-x-gray-dark'
+                  href={item.href}
+                  className={`flex items-center justify-center xl:justify-start gap-5 p-3 rounded-full transition-colors hover:bg-[#181818] ${
+                    isActive ? 'font-bold' : 'font-normal'
                   }`}
                 >
-                  {item.icon}
-                  <span className="hidden xl:block text-lg">{item.name}</span>
+                  <span className="text-[#E7E9EA]">{item.icon}</span>
+                  <span className={`hidden xl:block text-xl text-[#E7E9EA] ${isActive ? 'font-bold' : ''}`}>
+                    {item.name}
+                  </span>
                 </Link>
               </li>
             );
           })}
         </ul>
 
-        {/* API Status */}
-        <div className="mt-4 px-3 py-2 rounded-xl bg-x-gray-dark border border-x-gray-border">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-vital-healthy status-pulse" />
-            <span className="hidden xl:block text-xs text-x-gray-text">API Connected</span>
-          </div>
-          <p className="hidden xl:block text-[10px] text-x-gray-text mt-1">
-            47/60 requests remaining
-          </p>
-        </div>
-
         {/* User Profile - X Style */}
-        <Link href={buildHref('/settings')} className="mt-4 p-3 rounded-full hover:bg-x-gray-dark transition-colors cursor-pointer block">
-          <div className="flex items-center gap-3">
+        <div className="mt-3 p-3 rounded-full hover:bg-[#181818] transition-colors cursor-pointer">
+          <div className="flex items-center justify-center xl:justify-start gap-3">
             {/* Profile Photo */}
-            <div className="w-10 h-10 rounded-full bg-x-gray-light flex items-center justify-center overflow-hidden flex-shrink-0">
-              {profileData.profilePicture ? (
-                <img src={profileData.profilePicture} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <svg className="w-10 h-10 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
-              )}
+            <div className="w-10 h-10 rounded-full bg-[#333639] flex items-center justify-center overflow-hidden flex-shrink-0">
+              <svg className="w-6 h-6 text-[#71767B]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5.651 19h12.698c-.337-1.8-1.023-3.21-1.945-4.19C15.318 13.65 13.838 13 12 13s-3.317.65-4.404 1.81c-.922.98-1.608 2.39-1.945 4.19zm.486-5.56C7.627 11.85 9.648 11 12 11s4.373.85 5.863 2.44c1.477 1.58 2.366 3.8 2.632 6.46l.11 1.1H3.395l.11-1.1c.266-2.66 1.155-4.88 2.632-6.46zM12 4c-1.105 0-2 .9-2 2s.895 2 2 2 2-.9 2-2-.895-2-2-2zM8 6c0-2.21 1.791-4 4-4s4 1.79 4 4-1.791 4-4 4-4-1.79-4-4z" />
+              </svg>
             </div>
             {/* Name and Handle */}
             <div className="hidden xl:block flex-1 min-w-0">
-              <p className="text-x-white font-bold text-sm truncate">{profileData.name}</p>
-              <p className="text-x-gray-text text-sm truncate">{profileData.handle}</p>
+              <p className="text-[#E7E9EA] font-bold text-[15px] truncate">XPulse</p>
+              <p className="text-[#71767B] text-[15px] truncate">@xpulse</p>
             </div>
             {/* Three dots menu */}
             <div className="hidden xl:block">
-              <svg className="w-5 h-5 text-x-gray-text" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="2"/>
-                <circle cx="12" cy="12" r="2"/>
-                <circle cx="19" cy="12" r="2"/>
+              <svg className="w-5 h-5 text-[#E7E9EA]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm9 2c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm7 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" />
               </svg>
             </div>
           </div>
-        </Link>
+        </div>
       </div>
     </aside>
   );

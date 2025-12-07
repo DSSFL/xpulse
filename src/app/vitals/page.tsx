@@ -41,29 +41,29 @@ function VitalsContent() {
   };
 
   return (
-    <div>
-      {/* Sleek modern command bar - bottom right, slide-up */}
+    <div className="bg-black min-h-screen">
+      {/* X-style command bar - bottom, slide-up */}
       {handle && topics && (
         <div className={`fixed bottom-0 left-64 right-0 z-50 transition-transform duration-300 ${isExpanded ? 'translate-y-0' : 'translate-y-full'}`}>
           {/* Slide toggle button */}
           <div className="flex justify-center">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="absolute -top-8 bg-zinc-900/95 backdrop-blur-md text-zinc-400 hover:text-white px-4 py-1.5 rounded-t-lg border border-b-0 border-zinc-800 hover:border-zinc-700 transition-all shadow-lg"
+              className="absolute -top-8 bg-[#16181C]/95 backdrop-blur-md text-[#71767B] hover:text-[#E7E9EA] px-4 py-1.5 rounded-t-lg border border-b-0 border-[#2F3336] hover:border-[#1D9BF0] transition-all shadow-lg"
             >
               {isExpanded ? '▼' : '▲'} Command Bar
             </button>
           </div>
 
           {/* Main command bar */}
-          <div className="bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
+          <div className="bg-[#16181C]/95 backdrop-blur-md border-t border-[#2F3336] shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
             <div className="px-6 py-3">
               <div className="flex items-center justify-between gap-4">
                 {/* Left side - Tracking info */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-                  <span className="text-sm text-zinc-300 truncate">
-                    <span className="text-zinc-500">Tracking</span> <span className="text-white font-medium">@{handle}</span> <span className="text-zinc-500">for:</span> <span className="text-zinc-400">{topics}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#00BA7C] animate-pulse flex-shrink-0" />
+                  <span className="text-sm text-[#71767B] truncate">
+                    <span className="text-[#71767B]">Tracking</span> <span className="text-[#E7E9EA] font-medium">@{handle}</span> <span className="text-[#71767B]">for:</span> <span className="text-[#71767B]">{topics}</span>
                   </span>
                 </div>
 
@@ -73,37 +73,37 @@ function VitalsContent() {
                     <>
                       <button
                         onClick={() => window.location.href = `/analyze?handle=${handle}`}
-                        className="text-xs px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 hover:border-zinc-600 transition-all font-medium whitespace-nowrap"
+                        className="text-xs px-4 py-2 rounded-full bg-[#16181C] hover:bg-[#1D9BF0]/10 text-[#71767B] hover:text-[#1D9BF0] border border-[#2F3336] hover:border-[#1D9BF0] transition-all font-medium whitespace-nowrap"
                       >
-                        🔍 Analyze
+                        Analyze
                       </button>
                       <button
                         onClick={() => window.location.href = `/monitor?handle=${handle}`}
-                        className="text-xs px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 hover:border-zinc-600 transition-all font-medium whitespace-nowrap"
+                        className="text-xs px-4 py-2 rounded-full bg-[#16181C] hover:bg-[#1D9BF0]/10 text-[#71767B] hover:text-[#1D9BF0] border border-[#2F3336] hover:border-[#1D9BF0] transition-all font-medium whitespace-nowrap"
                       >
-                        📊 Monitor
+                        Monitor
                       </button>
                       <button
                         onClick={() => setShowChangeInput(true)}
-                        className="text-xs px-4 py-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-700/50 hover:border-zinc-700 transition-all whitespace-nowrap"
+                        className="text-xs px-4 py-2 rounded-full bg-[#16181C]/50 hover:bg-[#16181C] text-[#71767B] hover:text-[#E7E9EA] border border-[#2F3336]/50 hover:border-[#2F3336] transition-all whitespace-nowrap"
                       >
                         Change User
                       </button>
                     </>
                   ) : (
-                    <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2 bg-[#16181C] border border-[#2F3336] rounded-full px-3 py-2">
                       <input
                         type="text"
                         value={newHandle}
                         onChange={(e) => setNewHandle(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleChangeUser()}
                         placeholder="@username"
-                        className="bg-zinc-900 text-zinc-200 placeholder-zinc-500 text-xs px-3 py-1.5 rounded-md outline-none border border-zinc-700 focus:border-zinc-600 w-36"
+                        className="bg-black text-[#E7E9EA] placeholder-[#71767B] text-xs px-3 py-1.5 rounded-md outline-none border border-[#2F3336] focus:border-[#1D9BF0] w-36"
                         autoFocus
                       />
                       <button
                         onClick={handleChangeUser}
-                        className="text-xs px-3 py-1.5 rounded-md bg-white text-black hover:bg-zinc-200 transition-colors font-semibold"
+                        className="text-xs px-3 py-1.5 rounded-full bg-[#E7E9EA] text-black hover:bg-[#D7D9DB] transition-colors font-semibold"
                       >
                         Go
                       </button>
@@ -112,7 +112,7 @@ function VitalsContent() {
                           setShowChangeInput(false);
                           setNewHandle('');
                         }}
-                        className="text-xs px-2 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white transition-colors"
+                        className="text-xs px-2 py-1.5 rounded-full bg-[#2F3336] hover:bg-[#3E4144] text-[#71767B] hover:text-[#E7E9EA] transition-colors"
                       >
                         ✕
                       </button>
