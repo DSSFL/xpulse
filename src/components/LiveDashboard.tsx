@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import VitalCard from '@/components/VitalCard';
-import TopicCard from '@/components/TopicCard';
 import EKGLine from '@/components/EKGLine';
 import SentimentGauge from '@/components/SentimentGauge';
 import VelocityMeter from '@/components/VelocityMeter';
@@ -27,7 +26,7 @@ interface Tweet {
 }
 
 export default function LiveDashboard() {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({
     tweetsPerMinute: 0,
     totalTweets: 0,
