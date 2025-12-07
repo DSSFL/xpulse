@@ -38,11 +38,11 @@ function VitalsContent() {
 
   return (
     <div>
-      {/* Show tracking banner if configured */}
+      {/* Show tracking banner if configured - MOVED TO BOTTOM */}
       {handle && topics && (
-        <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-pulse-purple to-pulse-blue text-white py-3 px-4 z-50 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-pulse-purple to-pulse-blue text-white py-2.5 px-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm">
           <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               {/* Left side - Tracking info */}
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-2 h-2 rounded-full bg-white animate-pulse flex-shrink-0" />
@@ -108,7 +108,8 @@ function VitalsContent() {
         </div>
       )}
 
-      <div className={handle && topics ? 'mt-16 sm:mt-14' : ''}>
+      {/* No margin needed - content flows naturally */}
+      <div className={handle && topics ? 'pb-16' : ''}>
         <LiveDashboard />
       </div>
     </div>
