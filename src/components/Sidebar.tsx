@@ -68,7 +68,9 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[68px] xl:w-[275px] border-r border-[#2F3336] bg-black flex flex-col">
+    <>
+    {/* Desktop Sidebar */}
+    <aside className="hidden md:fixed md:flex left-0 top-0 h-screen w-[68px] xl:w-[275px] border-r border-[#2F3336] bg-black flex-col">
       {/* Logo */}
       <div className="p-3 xl:px-3 xl:py-3">
         <Link href="/" className="flex items-center justify-center xl:justify-start w-[50px] h-[50px] xl:w-auto rounded-full hover:bg-[#181818] transition-colors">
@@ -159,5 +161,46 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+
+    {/* Mobile Bottom Navigation */}
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-[#2F3336] z-50" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
+      <div className="flex items-center justify-around px-2 py-2">
+        {navItems.slice(0, 4).map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[60px] ${
+                isActive ? 'text-[#1D9BF0]' : 'text-[#71767B]'
+              }`}
+            >
+              <span className="relative">
+                {item.icon}
+                {item.badge && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#1D9BF0] text-[11px] font-bold rounded-full flex items-center justify-center text-white px-1">
+                    {item.badge}
+                  </span>
+                )}
+              </span>
+              <span className="text-[10px] font-medium">{item.name}</span>
+            </Link>
+          );
+        })}
+        {/* Settings in mobile nav */}
+        <Link
+          href="/settings"
+          className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[60px] ${
+            pathname === '/settings' ? 'text-[#1D9BF0]' : 'text-[#71767B]'
+          }`}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-[26px] h-[26px]">
+            <path d="M10.54 1.75h2.92l1.57 2.36c.11.17.32.25.53.21l2.53-.59 2.17 2.17-.58 2.54c-.04.2.04.41.21.53l2.36 1.57v2.92l-2.36 1.57c-.17.11-.25.32-.21.53l.58 2.54-2.17 2.17-2.53-.59c-.2-.04-.42.04-.53.21l-1.57 2.36h-2.92l-1.58-2.36c-.11-.17-.32-.25-.52-.21l-2.54.59-2.17-2.17.58-2.54c.04-.2-.03-.41-.21-.53l-2.35-1.57v-2.92L4.1 8.97c.17-.12.25-.33.21-.53L3.73 5.9 5.9 3.73l2.54.59c.2.04.41-.04.52-.21l1.58-2.36zm1.07 2l-.98 1.47C10.05 6.08 9 6.5 7.99 6.27l-1.46-.34-.6.6.33 1.46c.24 1.01-.18 2.07-1.05 2.64l-1.46.98v.78l1.46.98c.87.57 1.29 1.63 1.05 2.64l-.33 1.46.6.6 1.46-.34c1.01-.23 2.06.19 2.64 1.05l.98 1.47h.78l.97-1.47c.58-.86 1.63-1.28 2.65-1.05l1.45.34.61-.6-.34-1.46c-.23-1.01.18-2.07 1.05-2.64l1.47-.98v-.78l-1.47-.98c-.87-.57-1.28-1.63-1.05-2.64l.34-1.46-.61-.6-1.45.34c-1.02.23-2.07-.19-2.65-1.05l-.97-1.47h-.78zM12 8c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+          </svg>
+          <span className="text-[10px] font-medium">Settings</span>
+        </Link>
+      </div>
+    </nav>
+    </>
   );
 }

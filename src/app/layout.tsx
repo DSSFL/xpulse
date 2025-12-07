@@ -14,10 +14,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="theme-color" content="#000000" />
+      </head>
       <body className="bg-x-black text-x-white antialiased">
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 ml-[68px] xl:ml-[275px]">
+          <main className="flex-1 md:ml-[68px] xl:ml-[275px] pb-20 md:pb-0">
             {children}
           </main>
         </div>
