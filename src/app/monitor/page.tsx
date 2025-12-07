@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import { EnrichedTweet } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
 
 export default function MonitorPage() {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [tweets, setTweets] = useState<EnrichedTweet[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [filter, setFilter] = useState<'all' | 'positive' | 'negative' | 'neutral'>('all');
@@ -42,8 +41,6 @@ export default function MonitorPage() {
       console.log('📦 [MONITOR] Bulk tweets received:', bulkTweets.length);
       setTweets(bulkTweets.reverse());
     });
-
-    setSocket(socketInstance);
 
     return () => {
       socketInstance.disconnect();
