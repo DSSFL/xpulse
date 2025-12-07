@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { EnrichedPost } from '@/types/tweet';
 
 interface ThreatDetailsModalProps {
@@ -8,7 +7,14 @@ interface ThreatDetailsModalProps {
   onClose: () => void;
   threatType: 'velocity' | 'sentiment' | 'virality' | 'authenticity' | 'coordination' | 'narrative';
   posts: EnrichedPost[];
-  metrics: any;
+  metrics: {
+    postsPerMinute?: number;
+    sentiment?: { positive: number; neutral: number; negative: number };
+    viralityRisk?: number;
+    authenticityScore?: number;
+    narrativeCoherence?: string;
+    coordinatedActivity?: number;
+  };
 }
 
 export default function ThreatDetailsModal({
