@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 interface UserSettings {
   name: string;
@@ -26,8 +25,6 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'profile' | 'tracking' | 'notifications' | 'privacy' | 'display'>('profile');
