@@ -20,16 +20,18 @@ export default function Home() {
     const savedHandle = localStorage.getItem('xpulse_handle');
     const savedTopics = localStorage.getItem('xpulse_topics');
 
-    if (savedHandle && savedTopics) {
-      router.push('/vitals?handle=' + encodeURIComponent(savedHandle) + '&topics=' + encodeURIComponent(savedTopics));
+    if (savedHandle) {
+      const params = new URLSearchParams({ handle: savedHandle });
+      if (savedTopics) params.append('topics', savedTopics);
+      router.push('/vitals?' + params.toString());
     } else {
       setCheckingSession(false);
     }
   }, [router]);
 
   const startTracking = async () => {
-    if (!handle.trim() || !topics.trim()) {
-      alert('Please enter both your handle and topics to track');
+    if (!handle.trim()) {
+      alert('Please enter your X handle');
       return;
     }
 
@@ -41,14 +43,15 @@ export default function Home() {
       const socketInstance = io(backendUrl);
 
       // Progress updates
-      setTimeout(() => setProgress('Teaching Grok what to track...'), 800);
+      setTimeout(() => setProgress(topics.trim() ? 'Teaching Grok what to track...' : 'Setting up your dashboard...'), 800);
       setTimeout(() => setProgress('Searching X in real-time...'), 2000);
       setTimeout(() => setProgress('Building your intelligence dashboard...'), 3500);
 
       // Emit tracking request to backend
+      const topicsArray = topics.trim() ? topics.split(',').map(t => t.trim()) : [];
       socketInstance.emit('tracking:start', {
         handle: handle.replace('@', ''),
-        topics: topics.split(',').map(t => t.trim())
+        topics: topicsArray
       });
 
       // After 5 seconds, save to localStorage and navigate to vitals dashboard
@@ -56,8 +59,14 @@ export default function Home() {
         socketInstance.disconnect();
         // Save login info to localStorage so user doesn't see login again
         localStorage.setItem('xpulse_handle', handle.replace('@', ''));
-        localStorage.setItem('xpulse_topics', topics);
-        router.push('/vitals?handle=' + encodeURIComponent(handle.replace('@', '')) + '&topics=' + encodeURIComponent(topics));
+        if (topics.trim()) {
+          localStorage.setItem('xpulse_topics', topics);
+        } else {
+          localStorage.removeItem('xpulse_topics');
+        }
+        const params = new URLSearchParams({ handle: handle.replace('@', '') });
+        if (topics.trim()) params.append('topics', topics);
+        router.push('/vitals?' + params.toString());
       }, 5000);
 
     } catch (error) {
@@ -106,7 +115,7 @@ export default function Home() {
                   type="text"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && topics && startTracking()}
+                  onKeyPress={(e) => e.key === 'Enter' && handle && startTracking()}
                   placeholder="Your X handle"
                   className="w-full px-4 py-4 rounded-md bg-black border border-[#333639] text-[#E7E9EA] text-[17px] placeholder-[#71767B] focus:outline-none focus:border-[#1D9BF0] focus:ring-1 focus:ring-[#1D9BF0] transition-colors"
                 />
@@ -120,18 +129,18 @@ export default function Home() {
                 value={topics}
                 onChange={(e) => setTopics(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handle && startTracking()}
-                placeholder="Topics to track (comma separated)"
+                placeholder="Topics to track (optional)"
                 className="w-full px-4 py-4 rounded-md bg-black border border-[#333639] text-[#E7E9EA] text-[17px] placeholder-[#71767B] focus:outline-none focus:border-[#1D9BF0] focus:ring-1 focus:ring-[#1D9BF0] transition-colors"
               />
               <p className="text-[#71767B] text-[13px] mt-2">
-                Example: AI, crypto, breaking news, your brand name
+                Optional: AI, crypto, breaking news, your brand name
               </p>
             </div>
 
             {/* Start Button */}
             <button
               onClick={startTracking}
-              disabled={!handle.trim() || !topics.trim()}
+              disabled={!handle.trim()}
               className="w-full py-3 rounded-full bg-[#E7E9EA] text-black font-bold text-[17px] hover:bg-[#D7D9DB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#E7E9EA]"
             >
               Start Tracking
