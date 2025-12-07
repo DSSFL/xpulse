@@ -113,7 +113,7 @@ export default function LiveDashboard({ handle }: LiveDashboardProps = {}) {
 
   // Separate state for geo data - loaded ONCE and never updated (prevents flickering)
   const [geoData, setGeoData] = useState<{
-    usCountyBotFarms: Array<{ county: string; state: string; botScore: number }>;
+    usCountyBotFarms: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     usHeatMapData: Record<string, number>;
   } | null>(null);
   const [geoDataLoading, setGeoDataLoading] = useState(false);
@@ -174,7 +174,7 @@ export default function LiveDashboard({ handle }: LiveDashboardProps = {}) {
       });
 
       // Listen for geo data ONCE - this prevents flickering on the heat map
-      socketInstance.on('geo:data', (data: { usCountyBotFarms: Array<{ county: string; state: string; botScore: number }>; usHeatMapData: Record<string, number> }) => {
+      socketInstance.on('geo:data', (data: { usCountyBotFarms: any[]; usHeatMapData: Record<string, number> }) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         console.log('🗺️ [XPULSE] Received geo data (ONE-TIME):', data);
         console.log('🗺️ [XPULSE] Counties:', data.usCountyBotFarms?.length || 0);
         console.log('🗺️ [XPULSE] States in heat map:', Object.keys(data.usHeatMapData || {}).length);
