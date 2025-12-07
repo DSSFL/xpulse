@@ -37,17 +37,19 @@ function EnrichedPostCard({ post }: EnrichedPostCardProps) {
     }
   };
 
+  const sentiment = post.sentiment || 'neutral';
+
   const sentimentColor = {
     positive: 'text-vital-healthy',
     negative: 'text-vital-critical',
     neutral: 'text-vital-neutral'
-  }[post.sentiment] || 'text-x-gray-text';
+  }[sentiment] || 'text-x-gray-text';
 
   const sentimentBg = {
     positive: 'bg-vital-healthy/10 border-vital-healthy/30',
     negative: 'bg-vital-critical/10 border-vital-critical/30',
     neutral: 'bg-vital-neutral/10 border-vital-neutral/30'
-  }[post.sentiment] || 'bg-x-gray-dark border-x-gray-border';
+  }[sentiment] || 'bg-x-gray-dark border-x-gray-border';
 
   return (
     <div className={`p-4 rounded-xl border transition-all hover:border-x-blue hover:bg-x-gray-dark/50 ${sentimentBg}`}>
@@ -102,7 +104,7 @@ function EnrichedPostCard({ post }: EnrichedPostCardProps) {
 
         {/* Sentiment Badge */}
         <div className={`px-2 py-1 rounded-full text-xs font-medium ${sentimentColor} bg-x-gray-dark border border-current/30`}>
-          {post.sentiment}
+          {sentiment}
         </div>
       </div>
 

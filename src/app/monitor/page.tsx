@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { EnrichedTweet } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
+import PostCardSkeleton from '@/components/PostCardSkeleton';
 
 export default function MonitorPage() {
   const [tweets, setTweets] = useState<EnrichedTweet[]>([]);
@@ -27,6 +28,7 @@ export default function MonitorPage() {
     socketInstance.on('connect', () => {
       console.log('✅ [MONITOR] Connected to backend');
       setIsConnected(true);
+      setIsLoading(true); // Show loading state while waiting for first posts
     });
 
     socketInstance.on('disconnect', () => {
@@ -35,9 +37,10 @@ export default function MonitorPage() {
     });
 
     socketInstance.on('tweet:new', (tweet: EnrichedTweet) => {
-      console.log('📊 [MONITOR] New tweet:', tweet?.author?.username);
+      console.log('📊 [MONITOR] New post:', tweet?.author?.username);
       if (tweet && tweet.id) {
         setTweets(prev => [tweet, ...prev].slice(0, 50));
+        setIsLoading(false);
       }
     });
 
@@ -47,6 +50,7 @@ export default function MonitorPage() {
         // Limit initial bulk load to prevent UI overload
         const limitedTweets = bulkTweets.slice(0, 50);
         setTweets([...limitedTweets].reverse());
+        setIsLoading(false);
       }
     });
 
@@ -152,7 +156,16 @@ export default function MonitorPage() {
 
       {/* Tweet Stream */}
       <div className="space-y-4">
-        {filteredTweets.length === 0 ? (
+        {/* Loading State - Show skeletons while loading */}
+        {isLoading && filteredTweets.length === 0 ? (
+          <>
+            <PostCardSkeleton />
+            <PostCardSkeleton />
+            <PostCardSkeleton />
+            <PostCardSkeleton />
+            <PostCardSkeleton />
+          </>
+        ) : filteredTweets.length === 0 ? (
           <div className="p-12 rounded-xl bg-x-gray-dark border border-x-gray-border text-center">
             <div className="flex flex-col items-center gap-4">
               <svg className="w-16 h-16 text-x-gray-text opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -160,10 +173,10 @@ export default function MonitorPage() {
               </svg>
               <div>
                 <p className="text-x-gray-text text-lg mb-2">
-                  {isConnected ? 'Waiting for tweets...' : 'Connecting to backend...'}
+                  {isConnected ? 'Waiting for posts...' : 'Connecting to backend...'}
                 </p>
                 <p className="text-x-gray-text text-sm">
-                  {isConnected ? 'Real-time tweets will appear here' : 'Please wait while we establish connection'}
+                  {isConnected ? 'Real-time posts will appear here' : 'Please wait while we establish connection'}
                 </p>
               </div>
             </div>
@@ -171,7 +184,7 @@ export default function MonitorPage() {
         ) : (
           <>
             {displayedTweets.map((tweet) => (
-              <EnrichedTweetCard key={tweet.id} tweet={tweet} />
+              <EnrichedTweetCard key={tweet.id} post={tweet} />
             ))}
 
             {/* Load More Button */}

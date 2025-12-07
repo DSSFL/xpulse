@@ -11,6 +11,7 @@ interface VitalCardProps {
   subtitle?: string;
   trend?: 'up' | 'down' | 'stable';
   children?: ReactNode;
+  onClick?: () => void;
 }
 
 const statusColors = {
@@ -67,12 +68,16 @@ export default function VitalCard({
   subtitle,
   trend,
   children,
+  onClick,
 }: VitalCardProps) {
   const colors = statusColors[status];
 
   return (
     <div
-      className={`vital-card relative overflow-hidden rounded-xl border ${colors.border} ${colors.bg} p-5`}
+      onClick={onClick}
+      className={`vital-card relative overflow-hidden rounded-xl border ${colors.border} ${colors.bg} p-5 ${
+        onClick ? 'cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-200' : ''
+      }`}
     >
       {/* Status indicator dot */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
