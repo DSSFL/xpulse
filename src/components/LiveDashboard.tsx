@@ -374,7 +374,7 @@ export default function LiveDashboard() {
                 <div className="flex items-start gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-x-white font-semibold">@{tweet.author}</span>
+                      <span className="text-x-white font-semibold">@{typeof tweet.author === 'string' ? tweet.author : tweet.author?.username || 'Unknown'}</span>
                       <span className="text-x-gray-text text-xs">
                         {new Date(tweet.created_at).toLocaleTimeString()}
                       </span>
