@@ -41,33 +41,55 @@ export default function LiveDashboard() {
     // Connect to backend WebSocket - Use env var or hardcoded production URL
     const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://api.xpulse.buzz';
 
-    console.log('🔌 Connecting to backend:', backendUrl);
-    const socketInstance = io(backendUrl);
+    console.log('🔌 [XPULSE] Connecting to backend:', backendUrl);
+    console.log('🔌 [XPULSE] socket.io available:', typeof io);
 
-    socketInstance.on('connect', () => {
-      console.log('✅ Connected to X Pulse backend');
-      setIsConnected(true);
-    });
+    try {
+      const socketInstance = io(backendUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5
+      });
 
-    socketInstance.on('disconnect', () => {
-      console.log('❌ Disconnected from backend');
-      setIsConnected(false);
-    });
+      socketInstance.on('connect', () => {
+        console.log('✅ [XPULSE] Connected to backend - Socket ID:', socketInstance.id);
+        setIsConnected(true);
+      });
+
+      socketInstance.on('disconnect', (reason) => {
+        console.log('❌ [XPULSE] Disconnected from backend. Reason:', reason);
+        setIsConnected(false);
+      });
+
+      socketInstance.on('connect_error', (error) => {
+        console.error('❌ [XPULSE] Connection error:', error.message, error);
+        setIsConnected(false);
+      });
+
+      socketInstance.on('error', (error) => {
+        console.error('❌ [XPULSE] Socket error:', error);
+      });
 
     socketInstance.on('metrics:update', (data: Metrics) => {
       setMetrics(data);
       setLastUpdate(new Date().toLocaleTimeString());
     });
 
-    socketInstance.on('tweet:new', (tweet: Tweet) => {
-      setRecentTweets(prev => [tweet, ...prev].slice(0, 10));
-    });
+      socketInstance.on('tweet:new', (tweet: Tweet) => {
+        setRecentTweets(prev => [tweet, ...prev].slice(0, 10));
+      });
 
-    setSocket(socketInstance);
+      setSocket(socketInstance);
 
-    return () => {
-      socketInstance.disconnect();
-    };
+      return () => {
+        console.log('🔌 [XPULSE] Cleaning up socket connection');
+        socketInstance.disconnect();
+      };
+    } catch (error) {
+      console.error('❌ [XPULSE] Failed to initialize socket:', error);
+      setIsConnected(false);
+    }
   }, []);
 
   // Calculate sentiment percentage
