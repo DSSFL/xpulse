@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { EnrichedTweet } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
-import PostCardSkeleton from '@/components/PostCardSkeleton';
 import VortexLoader from '@/components/VortexLoader';
 
 export default function MonitorPage() {
@@ -37,7 +36,7 @@ export default function MonitorPage() {
       setIsConnected(false);
     });
 
-    socketInstance.on('tweet:new', (tweet: EnrichedTweet) => {
+    socketInstance.on('post:new', (tweet: EnrichedTweet) => {
       console.log('📊 [MONITOR] New post:', tweet?.author?.username);
       if (tweet && tweet.id) {
         setTweets(prev => [tweet, ...prev].slice(0, 50));
@@ -45,8 +44,8 @@ export default function MonitorPage() {
       }
     });
 
-    socketInstance.on('tweets:bulk', (bulkTweets: EnrichedTweet[]) => {
-      console.log('📦 [MONITOR] Bulk tweets received:', bulkTweets?.length || 0);
+    socketInstance.on('posts:bulk', (bulkTweets: EnrichedTweet[]) => {
+      console.log('📦 [MONITOR] Bulk posts received:', bulkTweets?.length || 0);
       if (Array.isArray(bulkTweets) && bulkTweets.length > 0) {
         // Limit initial bulk load to prevent UI overload
         const limitedTweets = bulkTweets.slice(0, 50);

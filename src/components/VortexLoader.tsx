@@ -102,14 +102,18 @@ export default function VortexLoader({ message = 'Connecting to X...', stage }: 
         ctx.globalAlpha = 1;
 
         // Store position for connections
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (particle as any).x = x;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (particle as any).y = y;
       });
 
       // Draw connections
       ctx.globalAlpha = 0.2;
       connections.forEach(([i1, i2]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const p1 = particles[i1] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const p2 = particles[i2] as any;
 
         // Only draw if particles are close enough

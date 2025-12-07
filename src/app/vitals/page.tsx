@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSearchParams as useSearchParamsImport } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { io } from 'socket.io-client';
 import LiveDashboard from '@/components/LiveDashboard';
@@ -9,7 +9,6 @@ export default function VitalsPage() {
   const searchParams = useSearchParams();
   const handle = searchParams.get('handle');
   const topics = searchParams.get('topics');
-  const [isTracking, setIsTracking] = useState(false);
 
   useEffect(() => {
     if (handle && topics) {
@@ -20,8 +19,6 @@ export default function VitalsPage() {
         handle,
         topics: topics.split(',').map(t => t.trim())
       });
-
-      setIsTracking(true);
 
       return () => {
         socketInstance.disconnect();
