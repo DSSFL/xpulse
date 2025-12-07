@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 const navItems = [
   {
     name: 'Vitals',
-    href: '/',
+    basePath: '/',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.5 12h3l2-4 3 8 2-4h3.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -15,7 +15,7 @@ const navItems = [
   },
   {
     name: 'Monitor',
-    href: '/monitor',
+    basePath: '/monitor',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -24,7 +24,7 @@ const navItems = [
   },
   {
     name: 'Analyze',
-    href: '/analyze',
+    basePath: '/analyze',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -33,7 +33,7 @@ const navItems = [
   },
   {
     name: 'Signal',
-    href: '/signal',
+    basePath: '/signal',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
@@ -43,7 +43,7 @@ const navItems = [
   },
   {
     name: 'Get XPulse',
-    href: '/get-xpulse',
+    basePath: '/get-xpulse',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
@@ -55,7 +55,7 @@ const navItems = [
 const bottomNavItems = [
   {
     name: 'Settings',
-    href: '/settings',
+    basePath: '/settings',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -67,12 +67,26 @@ const bottomNavItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Build href with preserved query params
+  const buildHref = (basePath: string) => {
+    const handle = searchParams.get('handle');
+    const topics = searchParams.get('topics');
+
+    const params = new URLSearchParams();
+    if (handle) params.set('handle', handle);
+    if (topics) params.set('topics', topics);
+
+    const query = params.toString();
+    return query ? `${basePath}?${query}` : basePath;
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[68px] xl:w-[275px] border-r border-x-gray-border bg-x-black flex flex-col">
       {/* Logo */}
       <div className="p-4 xl:px-4 xl:py-6">
-        <Link href="/" className="flex items-center">
+        <Link href={buildHref('/')} className="flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/xpulse-logo.png"
@@ -86,11 +100,12 @@ export default function Sidebar() {
       <nav className="flex-1 px-2 xl:px-3 py-4">
         <ul className="space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.basePath;
+            const href = buildHref(item.basePath);
             return (
               <li key={item.name}>
                 <Link
-                  href={item.href}
+                  href={href}
                   className={`flex items-center gap-4 px-3 py-3 rounded-full transition-colors ${
                     isActive
                       ? 'bg-x-gray-light text-x-white font-bold'
@@ -117,11 +132,12 @@ export default function Sidebar() {
       <div className="px-2 xl:px-3 pb-4">
         <ul className="space-y-1">
           {bottomNavItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.basePath;
+            const href = buildHref(item.basePath);
             return (
               <li key={item.name}>
                 <Link
-                  href={item.href}
+                  href={href}
                   className={`flex items-center gap-4 px-3 py-3 rounded-full transition-colors ${
                     isActive
                       ? 'bg-x-gray-light text-x-white font-bold'
