@@ -188,10 +188,39 @@ app.get('/api/metrics', (req, res) => {
   res.json(analytics.getMetrics());
 });
 
+// Store active tracking configurations per socket
+const trackingConfigs = new Map();
+
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log('👤 Client connected:', socket.id, 'from', socket.handshake.headers.origin);
   socket.emit('metrics:update', analytics.getMetrics());
+
+  // Handle tracking configuration
+  socket.on('tracking:start', async (data) => {
+    const { handle, topics } = data;
+    console.log(`🎯 [TRACKING] Starting intelligent tracking for @${handle} with topics:`, topics);
+
+    try {
+      // Use Grok to generate intelligent search query
+      const searchQuery = await generateGrokSearchQuery(handle, topics);
+      trackingConfigs.set(socket.id, { handle, topics, searchQuery });
+
+      console.log(`✅ [TRACKING] Generated search query:`, searchQuery);
+      socket.emit('tracking:ready', { handle, topics, searchQuery });
+    } catch (error) {
+      console.error('❌ [TRACKING] Failed to start tracking:', error);
+      socket.emit('tracking:error', { message: error.message });
+    }
+  });
+
+  socket.on('tracking:configure', async (data) => {
+    const { handle, topics } = data;
+    console.log(`⚙️  [TRACKING] Configuring tracking for @${handle}:`, topics);
+    const searchQuery = await generateGrokSearchQuery(handle, topics);
+    trackingConfigs.set(socket.id, { handle, topics, searchQuery });
+    socket.emit('tracking:configured', { searchQuery });
+  });
 
   // Handle user analysis requests
   socket.on('analyze:user', async (data) => {
@@ -302,8 +331,80 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('👋 Client disconnected:', socket.id);
+    trackingConfigs.delete(socket.id);
   });
 });
+
+/**
+ * Use Grok AI to generate intelligent search queries based on user topics
+ */
+async function generateGrokSearchQuery(handle, topics) {
+  const GROK_API_KEY = process.env.GROK_API_KEY || '';
+
+  if (!GROK_API_KEY) {
+    // Fallback: construct basic query without Grok
+    console.log('⚠️  [GROK] No API key - using basic query construction');
+    return `(${topics.join(' OR ')}) (@${handle} OR ${handle}) -is:retweet lang:en`;
+  }
+
+  try {
+    console.log(`🤖 [GROK] Asking Grok to generate search query for @${handle} with topics:`, topics);
+
+    const prompt = `You are an expert at constructing X (Twitter) API search queries.
+
+User wants to track: @${handle}
+Topics of interest: ${topics.join(', ')}
+
+Generate an optimal X API search query that will:
+1. Find posts mentioning @${handle} about these topics
+2. Find general conversation about these topics (even without @${handle})
+3. Use proper boolean operators (AND, OR, -is:retweet)
+4. Include relevant keywords and hashtags
+5. Filter out retweets and limit to English
+
+Return ONLY the search query string, nothing else. Be concise but comprehensive.`;
+
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROK_API_KEY}`
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert at constructing X API search queries. Return only the search query string, no explanations.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        model: 'grok-3-mini', // Fast model for query generation
+        stream: false,
+        temperature: 0.2
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Grok API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const searchQuery = data.choices[0].message.content.trim()
+      .replace(/^["']|["']$/g, '') // Remove quotes
+      .replace(/\n/g, ' '); // Remove newlines
+
+    console.log(`✅ [GROK] Generated intelligent query:`, searchQuery);
+    return searchQuery;
+
+  } catch (error) {
+    console.error('❌ [GROK] Query generation failed:', error);
+    // Fallback to basic query
+    return `(${topics.join(' OR ')}) (@${handle} OR ${handle}) -is:retweet lang:en`;
+  }
+}
 
 // Start server
 const PORT = process.env.PORT || 3001;

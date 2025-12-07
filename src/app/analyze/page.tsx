@@ -6,6 +6,7 @@ import { EnrichedPost } from '@/types/tweet';
 import VitalCard from '@/components/VitalCard';
 import SentimentGauge from '@/components/SentimentGauge';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
+import VortexLoader from '@/components/VortexLoader';
 
 interface PersonalAnalysis {
   handle: string;
@@ -164,8 +165,15 @@ export default function AnalyzePage() {
         )}
       </div>
 
+      {/* Loading State - Beautiful Vortex */}
+      {isAnalyzing && (
+        <div className="flex items-center justify-center min-h-[500px]">
+          <VortexLoader message={progress || 'Connecting to X...'} />
+        </div>
+      )}
+
       {/* Analysis Results */}
-      {analysis && (
+      {!isAnalyzing && analysis && (
         <>
           {/* Threat Level Banner */}
           <div className={`mb-8 p-6 rounded-xl border-2 ${

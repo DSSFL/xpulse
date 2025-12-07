@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import { EnrichedTweet } from '@/types/tweet';
 import EnrichedTweetCard from '@/components/EnrichedTweetCard';
 import PostCardSkeleton from '@/components/PostCardSkeleton';
+import VortexLoader from '@/components/VortexLoader';
 
 export default function MonitorPage() {
   const [tweets, setTweets] = useState<EnrichedTweet[]>([]);
@@ -156,15 +157,11 @@ export default function MonitorPage() {
 
       {/* Tweet Stream */}
       <div className="space-y-4">
-        {/* Loading State - Show skeletons while loading */}
+        {/* Loading State - Beautiful Vortex */}
         {isLoading && filteredTweets.length === 0 ? (
-          <>
-            <PostCardSkeleton />
-            <PostCardSkeleton />
-            <PostCardSkeleton />
-            <PostCardSkeleton />
-            <PostCardSkeleton />
-          </>
+          <div className="flex items-center justify-center min-h-[500px]">
+            <VortexLoader message="Connecting to X API..." stage="Waiting for real-time posts..." />
+          </div>
         ) : filteredTweets.length === 0 ? (
           <div className="p-12 rounded-xl bg-x-gray-dark border border-x-gray-border text-center">
             <div className="flex flex-col items-center gap-4">
