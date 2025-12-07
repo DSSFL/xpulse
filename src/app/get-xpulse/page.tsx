@@ -99,7 +99,7 @@ export default function GetXPulsePage() {
             Real-Time Narrative Intelligence
           </h1>
           <p className="text-xl text-x-gray-text max-w-3xl mx-auto">
-            Powered by Grok AI. Built for X. Know what's being said about you before it trends.
+            Powered by Grok AI. Built for X. Know what&apos;s being said about you before it trends.
           </p>
         </div>
 
