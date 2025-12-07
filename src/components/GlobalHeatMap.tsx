@@ -9,7 +9,10 @@ import {
   ZoomableGroup,
 } from 'react-simple-maps';
 
-const geoUrl = 'https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json';
+// Map data URLs
+const worldGeoUrl = '/world-countries.json';
+const usStatesUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
+const usCountiesUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json';
 
 interface HotspotData {
   id: string;
@@ -26,23 +29,57 @@ interface HotspotData {
 const initialHotspots: HotspotData[] = [];
 
 type MetricType = 'tweets' | 'retweets' | 'quotes' | 'hashtags';
+type MapView = 'usa' | 'world';
+
+// State FIPS codes to names
+const stateNames: { [key: string]: string } = {
+  '01': 'Alabama', '02': 'Alaska', '04': 'Arizona', '05': 'Arkansas', '06': 'California',
+  '08': 'Colorado', '09': 'Connecticut', '10': 'Delaware', '11': 'District of Columbia',
+  '12': 'Florida', '13': 'Georgia', '15': 'Hawaii', '16': 'Idaho', '17': 'Illinois',
+  '18': 'Indiana', '19': 'Iowa', '20': 'Kansas', '21': 'Kentucky', '22': 'Louisiana',
+  '23': 'Maine', '24': 'Maryland', '25': 'Massachusetts', '26': 'Michigan', '27': 'Minnesota',
+  '28': 'Mississippi', '29': 'Missouri', '30': 'Montana', '31': 'Nebraska', '32': 'Nevada',
+  '33': 'New Hampshire', '34': 'New Jersey', '35': 'New Mexico', '36': 'New York',
+  '37': 'North Carolina', '38': 'North Dakota', '39': 'Ohio', '40': 'Oklahoma', '41': 'Oregon',
+  '42': 'Pennsylvania', '44': 'Rhode Island', '45': 'South Carolina', '46': 'South Dakota',
+  '47': 'Tennessee', '48': 'Texas', '49': 'Utah', '50': 'Vermont', '51': 'Virginia',
+  '53': 'Washington', '54': 'West Virginia', '55': 'Wisconsin', '56': 'Wyoming', '72': 'Puerto Rico',
+};
+
+interface GeoHoverInfo {
+  name: string;
+  type: 'state' | 'county' | 'country';
+  stateName?: string;
+}
 
 const GlobalHeatMap = () => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('tweets');
   const [hoveredHotspot, setHoveredHotspot] = useState<HotspotData | null>(null);
+  const [hoveredGeo, setHoveredGeo] = useState<GeoHoverInfo | null>(null);
+  const [mapView, setMapView] = useState<MapView>('usa');
+  const [showCounties, setShowCounties] = useState(true);
   const [hotspots] = useState<HotspotData[]>(initialHotspots);
   const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({
-    coordinates: [0, 20],
+    coordinates: [-96, 38],
     zoom: 1,
   });
 
+  // Update position when map view changes
+  useEffect(() => {
+    if (mapView === 'usa') {
+      setPosition({ coordinates: [-96, 38], zoom: 1 });
+    } else {
+      setPosition({ coordinates: [0, 20], zoom: 1 });
+    }
+  }, [mapView]);
+
   // TODO: Connect to backend WebSocket to get real geographic data
   // For now, map is empty until real data is available
-  useEffect(() => {
-    // Will be replaced with real backend data stream
-  }, []);
 
-  const getMaxValue = () => Math.max(...hotspots.map(h => h[selectedMetric]));
+  const getMaxValue = () => {
+    if (hotspots.length === 0) return 1;
+    return Math.max(...hotspots.map(h => h[selectedMetric]));
+  };
 
   const getMarkerSize = (value: number) => {
     const max = getMaxValue();
@@ -114,43 +151,80 @@ const GlobalHeatMap = () => {
           <svg className="w-5 h-5 text-pulse-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Global Engagement Heat Map
+          {mapView === 'usa' ? 'USA' : 'Global'} Engagement Heat Map
         </h3>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-vital-healthy animate-pulse" />
-          <span className="text-xs text-x-gray-text">Live</span>
+        <div className="flex items-center gap-4">
+          {/* Map View Toggle */}
+          <div className="flex rounded-full bg-x-gray-light p-1">
+            <button
+              onClick={() => setMapView('usa')}
+              className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                mapView === 'usa' ? 'bg-x-blue text-white' : 'text-x-gray-text hover:text-x-white'
+              }`}
+            >
+              USA
+            </button>
+            <button
+              onClick={() => setMapView('world')}
+              className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                mapView === 'world' ? 'bg-x-blue text-white' : 'text-x-gray-text hover:text-x-white'
+              }`}
+            >
+              World
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-vital-healthy animate-pulse" />
+            <span className="text-xs text-x-gray-text">Live</span>
+          </div>
         </div>
       </div>
 
-      {/* Metric Selector */}
-      <div className="flex gap-2 mb-6">
-        {metrics.map(metric => (
-          <button
-            key={metric.key}
-            onClick={() => setSelectedMetric(metric.key)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-              selectedMetric === metric.key
-                ? 'bg-x-blue text-white'
-                : 'bg-x-gray-light text-x-gray-text hover:bg-x-gray-border'
-            }`}
-          >
-            {metric.icon}
-            {metric.label}
-          </button>
-        ))}
+      {/* Controls Row */}
+      <div className="flex items-center justify-between mb-6">
+        {/* Metric Selector */}
+        <div className="flex gap-2">
+          {metrics.map(metric => (
+            <button
+              key={metric.key}
+              onClick={() => setSelectedMetric(metric.key)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
+                selectedMetric === metric.key
+                  ? 'bg-x-blue text-white'
+                  : 'bg-x-gray-light text-x-gray-text hover:bg-x-gray-border'
+              }`}
+            >
+              {metric.icon}
+              {metric.label}
+            </button>
+          ))}
+        </div>
+
+        {/* County Toggle (USA only) */}
+        {mapView === 'usa' && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showCounties}
+              onChange={e => setShowCounties(e.target.checked)}
+              className="w-4 h-4 rounded bg-x-gray-light border-x-gray-border text-x-blue focus:ring-x-blue"
+            />
+            <span className="text-sm text-x-gray-text">Show Counties</span>
+          </label>
+        )}
       </div>
 
       {/* Map Container */}
       <div className="relative w-full h-[450px] rounded-lg overflow-hidden border border-x-gray-border">
         <ComposableMap
-          projection="geoMercator"
+          projection={mapView === 'usa' ? 'geoAlbersUsa' : 'geoMercator'}
           projectionConfig={{
-            scale: 140,
+            scale: mapView === 'usa' ? 1000 : 140,
           }}
           style={{
             width: '100%',
             height: '100%',
-            backgroundColor: '#1D9BF0', // X blue for water
+            backgroundColor: '#1D9BF0',
           }}
         >
           <ZoomableGroup
@@ -158,24 +232,88 @@ const GlobalHeatMap = () => {
             center={position.coordinates}
             onMoveEnd={({ coordinates, zoom }) => setPosition({ coordinates: coordinates as [number, number], zoom })}
           >
-            <Geographies geography={geoUrl}>
-              {({ geographies }) =>
-                geographies.map(geo => (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill="#2d5a47" // Light green for land
-                    stroke="#2F3336" // Border color
-                    strokeWidth={0.5}
-                    style={{
-                      default: { outline: 'none' },
-                      hover: { fill: '#3d7a5f', outline: 'none' },
-                      pressed: { outline: 'none' },
-                    }}
-                  />
-                ))
-              }
-            </Geographies>
+            {mapView === 'usa' ? (
+              <>
+                {/* US Counties (optional layer) */}
+                {showCounties && (
+                  <Geographies geography={usCountiesUrl}>
+                    {({ geographies }) =>
+                      geographies.map(geo => {
+                        const countyName = geo.properties.name || 'Unknown County';
+                        const stateCode = String(geo.id).substring(0, 2);
+                        const stateName = stateNames[stateCode] || 'Unknown State';
+                        return (
+                          <Geography
+                            key={geo.rsmKey}
+                            geography={geo}
+                            fill="#4a9b7f"
+                            stroke="#3d7a5f"
+                            strokeWidth={0.2}
+                            onMouseEnter={() => setHoveredGeo({ name: countyName, type: 'county', stateName })}
+                            onMouseLeave={() => setHoveredGeo(null)}
+                            style={{
+                              default: { outline: 'none' },
+                              hover: { fill: '#6bc4a6', outline: 'none' },
+                              pressed: { outline: 'none' },
+                            }}
+                          />
+                        );
+                      })
+                    }
+                  </Geographies>
+                )}
+
+                {/* US States */}
+                <Geographies geography={usStatesUrl}>
+                  {({ geographies }) =>
+                    geographies.map(geo => {
+                      const stateName = geo.properties.name || stateNames[String(geo.id)] || 'Unknown State';
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill={showCounties ? 'transparent' : '#4a9b7f'}
+                          stroke="#E7E9EA"
+                          strokeWidth={showCounties ? 1 : 0.5}
+                          onMouseEnter={() => !showCounties && setHoveredGeo({ name: stateName, type: 'state' })}
+                          onMouseLeave={() => setHoveredGeo(null)}
+                          style={{
+                            default: { outline: 'none', pointerEvents: showCounties ? 'none' : 'auto' },
+                            hover: { fill: showCounties ? 'transparent' : '#6bc4a6', outline: 'none' },
+                            pressed: { outline: 'none' },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                </Geographies>
+              </>
+            ) : (
+              /* World Map - countries only, no internal US borders */
+              <Geographies geography={worldGeoUrl}>
+                {({ geographies }) =>
+                  geographies.map(geo => {
+                    const countryName = geo.properties.name || geo.properties.NAME || geo.properties.ADMIN || 'Unknown';
+                    return (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill="#4a9b7f"
+                        stroke="#2F3336"
+                        strokeWidth={0.5}
+                        onMouseEnter={() => setHoveredGeo({ name: countryName, type: 'country' })}
+                        onMouseLeave={() => setHoveredGeo(null)}
+                        style={{
+                          default: { outline: 'none' },
+                          hover: { fill: '#6bc4a6', outline: 'none' },
+                          pressed: { outline: 'none' },
+                        }}
+                      />
+                    );
+                  })
+                }
+              </Geographies>
+            )}
 
             {/* Hotspot Markers */}
             {hotspots.map(hotspot => {
@@ -188,7 +326,6 @@ const GlobalHeatMap = () => {
                   onMouseEnter={() => setHoveredHotspot(hotspot)}
                   onMouseLeave={() => setHoveredHotspot(null)}
                 >
-                  {/* Pulse animation ring */}
                   <circle
                     r={size + 4}
                     fill="#1D9BF0"
@@ -196,7 +333,6 @@ const GlobalHeatMap = () => {
                     className="animate-ping"
                     style={{ transformOrigin: 'center', animationDuration: '2s' }}
                   />
-                  {/* Main marker */}
                   <circle
                     r={size}
                     fill="#1D9BF0"
@@ -208,7 +344,6 @@ const GlobalHeatMap = () => {
                       filter: `drop-shadow(0 0 ${size}px rgba(29, 155, 240, 0.5))`,
                     }}
                   />
-                  {/* Sentiment indicator */}
                   <circle
                     r={3}
                     fill={getSentimentColor(hotspot.sentiment)}
@@ -221,7 +356,26 @@ const GlobalHeatMap = () => {
           </ZoomableGroup>
         </ComposableMap>
 
-        {/* Hover Tooltip */}
+        {/* Geographic Hover Tooltip */}
+        {hoveredGeo && !hoveredHotspot && (
+          <div className="absolute top-4 left-4 px-4 py-3 bg-x-gray-dark/95 border border-x-gray-border rounded-lg shadow-lg backdrop-blur-sm z-10">
+            <p className="text-x-white font-semibold">
+              {hoveredGeo.name}
+              {hoveredGeo.type === 'county' && ' County'}
+            </p>
+            {hoveredGeo.type === 'county' && hoveredGeo.stateName && (
+              <p className="text-x-gray-text text-sm">{hoveredGeo.stateName}</p>
+            )}
+            {hoveredGeo.type === 'country' && (
+              <p className="text-x-gray-text text-xs mt-1">Country</p>
+            )}
+            {hoveredGeo.type === 'state' && (
+              <p className="text-x-gray-text text-xs mt-1">State</p>
+            )}
+          </div>
+        )}
+
+        {/* Hotspot Hover Tooltip */}
         {hoveredHotspot && (
           <div className="absolute top-4 right-4 p-4 bg-x-gray-dark/95 border border-x-gray-border rounded-lg shadow-lg min-w-[220px] backdrop-blur-sm">
             <h4 className="text-x-white font-semibold mb-3 flex items-center gap-2">
@@ -277,7 +431,10 @@ const GlobalHeatMap = () => {
             -
           </button>
           <button
-            onClick={() => setPosition({ coordinates: [0, 20], zoom: 1 })}
+            onClick={() => setPosition({
+              coordinates: mapView === 'usa' ? [-96, 38] : [0, 20],
+              zoom: 1
+            })}
             className="w-8 h-8 rounded bg-x-gray-dark/90 border border-x-gray-border text-x-white hover:bg-x-gray-light transition-colors flex items-center justify-center text-xs"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -292,7 +449,7 @@ const GlobalHeatMap = () => {
           <div className="flex flex-col gap-1 text-[10px]">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-vital-healthy" />
-              <span className="text-x-gray-text">Positive (&gt;30%)</span>
+              <span className="text-x-gray-text">Positive</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-pulse-blue" />
@@ -304,7 +461,7 @@ const GlobalHeatMap = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-vital-critical" />
-              <span className="text-x-gray-text">Negative (&lt;-30%)</span>
+              <span className="text-x-gray-text">Negative</span>
             </div>
           </div>
         </div>
