@@ -137,7 +137,7 @@ export default function LiveDashboard() {
               Intelligence Dashboard
             </h1>
             <p className="text-x-gray-text text-sm mt-1">
-              Real-time narrative intelligence powered by X
+              Real-time narrative intelligence powered by Grok
             </p>
           </div>
           <div className="flex items-center gap-4">

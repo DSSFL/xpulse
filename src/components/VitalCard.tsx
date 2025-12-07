@@ -16,28 +16,28 @@ interface VitalCardProps {
 
 const statusColors = {
   healthy: {
-    bg: 'bg-vital-healthy/10',
-    border: 'border-vital-healthy/30',
+    bg: 'bg-x-gray-dark',
+    border: 'border-x-gray-border',
     text: 'text-vital-healthy',
-    glow: 'shadow-glow-green',
+    glow: '',
   },
   warning: {
-    bg: 'bg-vital-warning/10',
-    border: 'border-vital-warning/30',
+    bg: 'bg-x-gray-dark',
+    border: 'border-x-gray-border',
     text: 'text-vital-warning',
     glow: '',
   },
   critical: {
-    bg: 'bg-vital-critical/10',
-    border: 'border-vital-critical/30',
+    bg: 'bg-x-gray-dark',
+    border: 'border-x-gray-border',
     text: 'text-vital-critical',
-    glow: 'shadow-glow-red',
+    glow: '',
   },
   neutral: {
-    bg: 'bg-vital-neutral/10',
-    border: 'border-vital-neutral/30',
+    bg: 'bg-x-gray-dark',
+    border: 'border-x-gray-border',
     text: 'text-vital-neutral',
-    glow: 'shadow-glow-blue',
+    glow: '',
   },
 };
 

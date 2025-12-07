@@ -91,10 +91,10 @@ export default function MonitorPage() {
               <svg className="w-7 h-7 text-pulse-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              Live Tweet Monitor
+              Live Post Monitor
             </h1>
             <p className="text-x-gray-text text-sm mt-1">
-              Real-time enriched tweet stream with full X API data
+              Real-time enriched post stream with full X API data
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -104,7 +104,7 @@ export default function MonitorPage() {
             </div>
             <div className="px-4 py-2 rounded-full bg-x-gray-dark border border-x-gray-border">
               <span className="text-sm text-x-white font-medium">{filteredTweets.length}</span>
-              <span className="text-sm text-x-gray-text ml-1">tweets</span>
+              <span className="text-sm text-x-gray-text ml-1">posts</span>
             </div>
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function MonitorPage() {
               : 'bg-x-gray-dark text-x-gray-text hover:bg-x-gray-light'
           }`}
         >
-          All Tweets
+          All Posts
         </button>
         <button
           onClick={() => setFilter('positive')}

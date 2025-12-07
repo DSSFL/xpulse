@@ -80,14 +80,14 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[68px] xl:w-[275px] border-r border-x-gray-border bg-x-black flex flex-col">
       {/* Logo */}
-      <div className="p-4 xl:px-6">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <span className="text-x-white font-bold text-2xl">X</span>
-          </div>
-          <span className="hidden xl:block text-x-white font-bold text-xl">
-            Pulse
-          </span>
+      <div className="p-4 xl:px-4 xl:py-6">
+        <Link href="/" className="flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/xpulse-logo.png"
+            alt="XPulse"
+            className="h-8 xl:h-10 w-auto"
+          />
         </Link>
       </div>
 

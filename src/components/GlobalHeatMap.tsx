@@ -52,6 +52,120 @@ interface GeoHoverInfo {
   stateName?: string;
 }
 
+// US State Capitals
+const stateCapitals: { name: string; state: string; coordinates: [number, number]; isNationalCapital?: boolean }[] = [
+  { name: 'Washington D.C.', state: 'District of Columbia', coordinates: [-77.0369, 38.9072], isNationalCapital: true },
+  { name: 'Montgomery', state: 'Alabama', coordinates: [-86.3006, 32.3770] },
+  { name: 'Juneau', state: 'Alaska', coordinates: [-134.4197, 58.3019] },
+  { name: 'Phoenix', state: 'Arizona', coordinates: [-112.0740, 33.4484] },
+  { name: 'Little Rock', state: 'Arkansas', coordinates: [-92.2896, 34.7465] },
+  { name: 'Sacramento', state: 'California', coordinates: [-121.4944, 38.5816] },
+  { name: 'Denver', state: 'Colorado', coordinates: [-104.9903, 39.7392] },
+  { name: 'Hartford', state: 'Connecticut', coordinates: [-72.6851, 41.7658] },
+  { name: 'Dover', state: 'Delaware', coordinates: [-75.5244, 39.1582] },
+  { name: 'Tallahassee', state: 'Florida', coordinates: [-84.2807, 30.4383] },
+  { name: 'Atlanta', state: 'Georgia', coordinates: [-84.3880, 33.7490] },
+  { name: 'Honolulu', state: 'Hawaii', coordinates: [-157.8583, 21.3069] },
+  { name: 'Boise', state: 'Idaho', coordinates: [-116.2023, 43.6150] },
+  { name: 'Springfield', state: 'Illinois', coordinates: [-89.6501, 39.7817] },
+  { name: 'Indianapolis', state: 'Indiana', coordinates: [-86.1581, 39.7684] },
+  { name: 'Des Moines', state: 'Iowa', coordinates: [-93.6091, 41.5868] },
+  { name: 'Topeka', state: 'Kansas', coordinates: [-95.6890, 39.0473] },
+  { name: 'Frankfort', state: 'Kentucky', coordinates: [-84.8733, 38.2009] },
+  { name: 'Baton Rouge', state: 'Louisiana', coordinates: [-91.1403, 30.4515] },
+  { name: 'Augusta', state: 'Maine', coordinates: [-69.7795, 44.3106] },
+  { name: 'Annapolis', state: 'Maryland', coordinates: [-76.4922, 38.9784] },
+  { name: 'Boston', state: 'Massachusetts', coordinates: [-71.0589, 42.3601] },
+  { name: 'Lansing', state: 'Michigan', coordinates: [-84.5555, 42.7325] },
+  { name: 'Saint Paul', state: 'Minnesota', coordinates: [-93.0900, 44.9537] },
+  { name: 'Jackson', state: 'Mississippi', coordinates: [-90.1848, 32.2988] },
+  { name: 'Jefferson City', state: 'Missouri', coordinates: [-92.1735, 38.5767] },
+  { name: 'Helena', state: 'Montana', coordinates: [-112.0391, 46.5884] },
+  { name: 'Lincoln', state: 'Nebraska', coordinates: [-96.7026, 40.8258] },
+  { name: 'Carson City', state: 'Nevada', coordinates: [-119.7674, 39.1638] },
+  { name: 'Concord', state: 'New Hampshire', coordinates: [-71.5376, 43.2081] },
+  { name: 'Trenton', state: 'New Jersey', coordinates: [-74.7429, 40.2206] },
+  { name: 'Santa Fe', state: 'New Mexico', coordinates: [-105.9378, 35.6870] },
+  { name: 'Albany', state: 'New York', coordinates: [-73.7562, 42.6526] },
+  { name: 'Raleigh', state: 'North Carolina', coordinates: [-78.6382, 35.7796] },
+  { name: 'Bismarck', state: 'North Dakota', coordinates: [-100.7837, 46.8083] },
+  { name: 'Columbus', state: 'Ohio', coordinates: [-82.9988, 39.9612] },
+  { name: 'Oklahoma City', state: 'Oklahoma', coordinates: [-97.5164, 35.4676] },
+  { name: 'Salem', state: 'Oregon', coordinates: [-123.0351, 44.9429] },
+  { name: 'Harrisburg', state: 'Pennsylvania', coordinates: [-76.8867, 40.2732] },
+  { name: 'Providence', state: 'Rhode Island', coordinates: [-71.4128, 41.8240] },
+  { name: 'Columbia', state: 'South Carolina', coordinates: [-81.0348, 34.0007] },
+  { name: 'Pierre', state: 'South Dakota', coordinates: [-100.3510, 44.3683] },
+  { name: 'Nashville', state: 'Tennessee', coordinates: [-86.7816, 36.1627] },
+  { name: 'Austin', state: 'Texas', coordinates: [-97.7431, 30.2672] },
+  { name: 'Salt Lake City', state: 'Utah', coordinates: [-111.8910, 40.7608] },
+  { name: 'Montpelier', state: 'Vermont', coordinates: [-72.5754, 44.2601] },
+  { name: 'Richmond', state: 'Virginia', coordinates: [-77.4360, 37.5407] },
+  { name: 'Olympia', state: 'Washington', coordinates: [-122.9007, 47.0379] },
+  { name: 'Charleston', state: 'West Virginia', coordinates: [-81.6326, 38.3498] },
+  { name: 'Madison', state: 'Wisconsin', coordinates: [-89.4012, 43.0731] },
+  { name: 'Cheyenne', state: 'Wyoming', coordinates: [-104.8202, 41.1400] },
+];
+
+// World Country Capitals
+const worldCapitals: { name: string; country: string; coordinates: [number, number] }[] = [
+  { name: 'Washington D.C.', country: 'United States', coordinates: [-77.0369, 38.9072] },
+  { name: 'Ottawa', country: 'Canada', coordinates: [-75.6972, 45.4215] },
+  { name: 'Mexico City', country: 'Mexico', coordinates: [-99.1332, 19.4326] },
+  { name: 'London', country: 'United Kingdom', coordinates: [-0.1276, 51.5074] },
+  { name: 'Paris', country: 'France', coordinates: [2.3522, 48.8566] },
+  { name: 'Berlin', country: 'Germany', coordinates: [13.4050, 52.5200] },
+  { name: 'Rome', country: 'Italy', coordinates: [12.4964, 41.9028] },
+  { name: 'Madrid', country: 'Spain', coordinates: [-3.7038, 40.4168] },
+  { name: 'Moscow', country: 'Russia', coordinates: [37.6173, 55.7558] },
+  { name: 'Beijing', country: 'China', coordinates: [116.4074, 39.9042] },
+  { name: 'Tokyo', country: 'Japan', coordinates: [139.6917, 35.6895] },
+  { name: 'Seoul', country: 'South Korea', coordinates: [126.9780, 37.5665] },
+  { name: 'New Delhi', country: 'India', coordinates: [77.2090, 28.6139] },
+  { name: 'Canberra', country: 'Australia', coordinates: [149.1300, -35.2809] },
+  { name: 'Brasília', country: 'Brazil', coordinates: [-47.8825, -15.7942] },
+  { name: 'Buenos Aires', country: 'Argentina', coordinates: [-58.3816, -34.6037] },
+  { name: 'Cairo', country: 'Egypt', coordinates: [31.2357, 30.0444] },
+  { name: 'Pretoria', country: 'South Africa', coordinates: [28.1871, -25.7461] },
+  { name: 'Ankara', country: 'Turkey', coordinates: [32.8597, 39.9334] },
+  { name: 'Riyadh', country: 'Saudi Arabia', coordinates: [46.6753, 24.7136] },
+  { name: 'Tehran', country: 'Iran', coordinates: [51.3890, 35.6892] },
+  { name: 'Jakarta', country: 'Indonesia', coordinates: [106.8456, -6.2088] },
+  { name: 'Bangkok', country: 'Thailand', coordinates: [100.5018, 13.7563] },
+  { name: 'Hanoi', country: 'Vietnam', coordinates: [105.8342, 21.0278] },
+  { name: 'Manila', country: 'Philippines', coordinates: [120.9842, 14.5995] },
+  { name: 'Kuala Lumpur', country: 'Malaysia', coordinates: [101.6869, 3.1390] },
+  { name: 'Singapore', country: 'Singapore', coordinates: [103.8198, 1.3521] },
+  { name: 'Wellington', country: 'New Zealand', coordinates: [174.7762, -41.2865] },
+  { name: 'Athens', country: 'Greece', coordinates: [23.7275, 37.9838] },
+  { name: 'Amsterdam', country: 'Netherlands', coordinates: [4.9041, 52.3676] },
+  { name: 'Brussels', country: 'Belgium', coordinates: [4.3517, 50.8503] },
+  { name: 'Vienna', country: 'Austria', coordinates: [16.3738, 48.2082] },
+  { name: 'Warsaw', country: 'Poland', coordinates: [21.0122, 52.2297] },
+  { name: 'Prague', country: 'Czech Republic', coordinates: [14.4378, 50.0755] },
+  { name: 'Budapest', country: 'Hungary', coordinates: [19.0402, 47.4979] },
+  { name: 'Stockholm', country: 'Sweden', coordinates: [18.0686, 59.3293] },
+  { name: 'Oslo', country: 'Norway', coordinates: [10.7522, 59.9139] },
+  { name: 'Copenhagen', country: 'Denmark', coordinates: [12.5683, 55.6761] },
+  { name: 'Helsinki', country: 'Finland', coordinates: [24.9384, 60.1699] },
+  { name: 'Dublin', country: 'Ireland', coordinates: [-6.2603, 53.3498] },
+  { name: 'Lisbon', country: 'Portugal', coordinates: [-9.1393, 38.7223] },
+  { name: 'Bern', country: 'Switzerland', coordinates: [7.4474, 46.9480] },
+  { name: 'Kyiv', country: 'Ukraine', coordinates: [30.5234, 50.4501] },
+  { name: 'Bucharest', country: 'Romania', coordinates: [26.1025, 44.4268] },
+  { name: 'Sofia', country: 'Bulgaria', coordinates: [23.3219, 42.6977] },
+  { name: 'Belgrade', country: 'Serbia', coordinates: [20.4489, 44.7866] },
+  { name: 'Zagreb', country: 'Croatia', coordinates: [15.9819, 45.8150] },
+  { name: 'Nairobi', country: 'Kenya', coordinates: [36.8219, -1.2921] },
+  { name: 'Lagos', country: 'Nigeria', coordinates: [3.3792, 6.5244] },
+  { name: 'Accra', country: 'Ghana', coordinates: [-0.1870, 5.6037] },
+  { name: 'Addis Ababa', country: 'Ethiopia', coordinates: [38.7578, 9.0320] },
+  { name: 'Lima', country: 'Peru', coordinates: [-77.0428, -12.0464] },
+  { name: 'Bogotá', country: 'Colombia', coordinates: [-74.0721, 4.7110] },
+  { name: 'Santiago', country: 'Chile', coordinates: [-70.6693, -33.4489] },
+  { name: 'Caracas', country: 'Venezuela', coordinates: [-66.9036, 10.4806] },
+];
+
 const GlobalHeatMap = () => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('tweets');
   const [hoveredHotspot, setHoveredHotspot] = useState<HotspotData | null>(null);
@@ -109,7 +223,7 @@ const GlobalHeatMap = () => {
   const metrics: { key: MetricType; label: string; icon: JSX.Element }[] = [
     {
       key: 'tweets',
-      label: 'Tweets',
+      label: 'Posts',
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -118,7 +232,7 @@ const GlobalHeatMap = () => {
     },
     {
       key: 'retweets',
-      label: 'Retweets',
+      label: 'Reposts',
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -127,7 +241,7 @@ const GlobalHeatMap = () => {
     },
     {
       key: 'quotes',
-      label: 'Quotes',
+      label: 'Quote Posts',
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -327,6 +441,43 @@ const GlobalHeatMap = () => {
               </Geographies>
             )}
 
+            {/* Capital Star Markers */}
+            {mapView === 'usa' ? (
+              stateCapitals.map((capital) => {
+                const baseSize = capital.isNationalCapital ? 12 : 7;
+                const scaledSize = baseSize / position.zoom;
+                const starPoints = `${scaledSize},0 ${scaledSize*1.3},${scaledSize*0.95} ${scaledSize*2.1},${scaledSize*0.95} ${scaledSize*1.5},${scaledSize*1.55} ${scaledSize*1.75},${scaledSize*2.45} ${scaledSize},${scaledSize*1.9} ${scaledSize*0.25},${scaledSize*2.45} ${scaledSize*0.5},${scaledSize*1.55} ${-scaledSize*0.1},${scaledSize*0.95} ${scaledSize*0.7},${scaledSize*0.95}`;
+                return (
+                  <Marker key={capital.name} coordinates={capital.coordinates}>
+                    <polygon
+                      points={starPoints}
+                      fill="#FFD700"
+                      stroke="#000"
+                      strokeWidth={0.5 / position.zoom}
+                      style={{ transform: `translate(${-scaledSize}px, ${-scaledSize*1.2}px)` }}
+                    />
+                  </Marker>
+                );
+              })
+            ) : (
+              worldCapitals.map((capital) => {
+                const baseSize = 6;
+                const scaledSize = baseSize / position.zoom;
+                const starPoints = `${scaledSize},0 ${scaledSize*1.3},${scaledSize*0.95} ${scaledSize*2.1},${scaledSize*0.95} ${scaledSize*1.5},${scaledSize*1.55} ${scaledSize*1.75},${scaledSize*2.45} ${scaledSize},${scaledSize*1.9} ${scaledSize*0.25},${scaledSize*2.45} ${scaledSize*0.5},${scaledSize*1.55} ${-scaledSize*0.1},${scaledSize*0.95} ${scaledSize*0.7},${scaledSize*0.95}`;
+                return (
+                  <Marker key={capital.name} coordinates={capital.coordinates}>
+                    <polygon
+                      points={starPoints}
+                      fill="#FFD700"
+                      stroke="#000"
+                      strokeWidth={0.5 / position.zoom}
+                      style={{ transform: `translate(${-scaledSize}px, ${-scaledSize*1.2}px)` }}
+                    />
+                  </Marker>
+                );
+              })
+            )}
+
             {/* Hotspot Markers */}
             {hotspots.map(hotspot => {
               const size = getMarkerSize(hotspot[selectedMetric]);
@@ -400,15 +551,15 @@ const GlobalHeatMap = () => {
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-x-gray-text">Tweets</span>
+                <span className="text-x-gray-text">Posts</span>
                 <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.tweets)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-x-gray-text">Retweets</span>
+                <span className="text-x-gray-text">Reposts</span>
                 <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.retweets)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-x-gray-text">Quotes</span>
+                <span className="text-x-gray-text">Quote Posts</span>
                 <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.quotes)}</span>
               </div>
               <div className="flex justify-between">
