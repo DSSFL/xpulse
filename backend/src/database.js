@@ -8,8 +8,9 @@ const { Pool } = pg;
 class Database {
   constructor() {
     // Use Supabase connection pooler (port 6543) to avoid IP whitelisting issues
+    // Format: <db_identifier>.pooler.supabase.com
     this.pool = new Pool({
-      host: 'aws-0-us-east-1.pooler.supabase.com',
+      host: 'db.ycjtxvabmxnxdzvogstj.pooler.supabase.com',
       port: 6543,
       user: 'postgres.ycjtxvabmxnxdzvogstj',
       password: 'Reefroad1964$',
