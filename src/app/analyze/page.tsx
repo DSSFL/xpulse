@@ -37,6 +37,7 @@ export default function AnalyzePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<PersonalAnalysis | null>(null);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState<string>('');
 
   const analyzeHandle = async () => {
     if (!handle.trim()) {
@@ -46,6 +47,7 @@ export default function AnalyzePage() {
 
     setIsAnalyzing(true);
     setError('');
+    setProgress('Connecting to X API...');
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://api.xpulse.buzz';
@@ -53,12 +55,18 @@ export default function AnalyzePage() {
       // Connect to backend for real-time analysis
       const socketInstance = io(backendUrl);
 
+      // Progress updates
+      setTimeout(() => setProgress('Searching for mentions...'), 500);
+      setTimeout(() => setProgress('Analyzing with Grok AI...'), 3000);
+      setTimeout(() => setProgress('Generating threat report...'), 8000);
+
       socketInstance.emit('analyze:user', { handle: handle.replace('@', '') });
 
       socketInstance.on('analysis:complete', (data: PersonalAnalysis) => {
         console.log('📊 Analysis complete:', data);
         setAnalysis(data);
         setIsAnalyzing(false);
+        setProgress('');
         socketInstance.disconnect();
       });
 
@@ -66,17 +74,19 @@ export default function AnalyzePage() {
         console.error('❌ Analysis error:', err);
         setError(err.message || 'Failed to analyze handle');
         setIsAnalyzing(false);
+        setProgress('');
         socketInstance.disconnect();
       });
 
-      // Timeout after 30 seconds
+      // Timeout after 15 seconds
       setTimeout(() => {
         if (isAnalyzing) {
           setError('Analysis timed out. Please try again.');
           setIsAnalyzing(false);
+          setProgress('');
           socketInstance.disconnect();
         }
-      }, 30000);
+      }, 15000);
 
     } catch (err) {
       console.error('Error:', err);
@@ -137,7 +147,7 @@ export default function AnalyzePage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Analyzing...
+                {progress || 'Analyzing...'}
               </>
             ) : (
               <>
