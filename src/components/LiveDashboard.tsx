@@ -40,6 +40,7 @@ export default function LiveDashboard() {
   useEffect(() => {
     // Connect to backend WebSocket
     const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    console.log('🔌 Connecting to backend:', backendUrl);
     const socketInstance = io(backendUrl);
 
     socketInstance.on('connect', () => {
