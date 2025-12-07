@@ -1,65 +1,81 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker,
+  ZoomableGroup,
+} from 'react-simple-maps';
 
-interface RegionData {
+const geoUrl = 'https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json';
+
+interface HotspotData {
   id: string;
   name: string;
+  coordinates: [number, number];
   tweets: number;
   retweets: number;
   quotes: number;
   hashtags: number;
-  sentiment: number; // -1 to 1
-  coordinates: { x: number; y: number };
+  sentiment: number;
 }
 
-// Mock data for regions - will be replaced with real X API data
-const mockRegions: RegionData[] = [
-  { id: 'na', name: 'North America', tweets: 234500, retweets: 89200, quotes: 12300, hashtags: 45600, sentiment: 0.23, coordinates: { x: 22, y: 35 } },
-  { id: 'sa', name: 'South America', tweets: 87600, retweets: 34500, quotes: 5600, hashtags: 18900, sentiment: -0.12, coordinates: { x: 30, y: 65 } },
-  { id: 'eu', name: 'Europe', tweets: 312000, retweets: 145000, quotes: 23400, hashtags: 67800, sentiment: 0.45, coordinates: { x: 52, y: 30 } },
-  { id: 'af', name: 'Africa', tweets: 45600, retweets: 12300, quotes: 2100, hashtags: 8900, sentiment: 0.08, coordinates: { x: 52, y: 55 } },
-  { id: 'as', name: 'Asia', tweets: 567000, retweets: 234000, quotes: 45600, hashtags: 123000, sentiment: 0.67, coordinates: { x: 72, y: 40 } },
-  { id: 'oc', name: 'Oceania', tweets: 34500, retweets: 12100, quotes: 1800, hashtags: 5600, sentiment: 0.34, coordinates: { x: 85, y: 70 } },
+// Mock hotspot data - major cities with engagement metrics
+const mockHotspots: HotspotData[] = [
+  { id: 'nyc', name: 'New York', coordinates: [-74.006, 40.7128], tweets: 234500, retweets: 89200, quotes: 12300, hashtags: 45600, sentiment: 0.23 },
+  { id: 'la', name: 'Los Angeles', coordinates: [-118.2437, 34.0522], tweets: 187000, retweets: 67800, quotes: 9800, hashtags: 34500, sentiment: 0.45 },
+  { id: 'london', name: 'London', coordinates: [-0.1276, 51.5074], tweets: 312000, retweets: 145000, quotes: 23400, hashtags: 67800, sentiment: 0.12 },
+  { id: 'tokyo', name: 'Tokyo', coordinates: [139.6917, 35.6895], tweets: 456000, retweets: 198000, quotes: 34500, hashtags: 89000, sentiment: 0.67 },
+  { id: 'paris', name: 'Paris', coordinates: [2.3522, 48.8566], tweets: 145000, retweets: 56000, quotes: 8900, hashtags: 23400, sentiment: -0.15 },
+  { id: 'sydney', name: 'Sydney', coordinates: [151.2093, -33.8688], tweets: 78000, retweets: 34000, quotes: 5600, hashtags: 12300, sentiment: 0.34 },
+  { id: 'dubai', name: 'Dubai', coordinates: [55.2708, 25.2048], tweets: 123000, retweets: 45000, quotes: 7800, hashtags: 19000, sentiment: 0.56 },
+  { id: 'singapore', name: 'Singapore', coordinates: [103.8198, 1.3521], tweets: 98000, retweets: 41000, quotes: 6700, hashtags: 15600, sentiment: 0.41 },
+  { id: 'mumbai', name: 'Mumbai', coordinates: [72.8777, 19.076], tweets: 189000, retweets: 78000, quotes: 12000, hashtags: 34000, sentiment: 0.28 },
+  { id: 'saopaulo', name: 'São Paulo', coordinates: [-46.6333, -23.5505], tweets: 167000, retweets: 62000, quotes: 9400, hashtags: 28000, sentiment: -0.08 },
+  { id: 'berlin', name: 'Berlin', coordinates: [13.405, 52.52], tweets: 112000, retweets: 48000, quotes: 7200, hashtags: 21000, sentiment: 0.19 },
+  { id: 'toronto', name: 'Toronto', coordinates: [-79.3832, 43.6532], tweets: 134000, retweets: 52000, quotes: 8100, hashtags: 24000, sentiment: 0.38 },
 ];
 
 type MetricType = 'tweets' | 'retweets' | 'quotes' | 'hashtags';
 
-export default function GlobalHeatMap() {
+const GlobalHeatMap = () => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('tweets');
-  const [hoveredRegion, setHoveredRegion] = useState<RegionData | null>(null);
-  const [regions, setRegions] = useState<RegionData[]>(mockRegions);
+  const [hoveredHotspot, setHoveredHotspot] = useState<HotspotData | null>(null);
+  const [hotspots, setHotspots] = useState<HotspotData[]>(mockHotspots);
+  const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({
+    coordinates: [0, 20],
+    zoom: 1,
+  });
 
   // Simulate real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
-      setRegions(prev => prev.map(region => ({
-        ...region,
-        tweets: region.tweets + Math.floor(Math.random() * 100) - 30,
-        retweets: region.retweets + Math.floor(Math.random() * 50) - 15,
-        quotes: region.quotes + Math.floor(Math.random() * 20) - 5,
-        hashtags: region.hashtags + Math.floor(Math.random() * 30) - 10,
-      })));
+      setHotspots(prev =>
+        prev.map(hotspot => ({
+          ...hotspot,
+          tweets: Math.max(0, hotspot.tweets + Math.floor(Math.random() * 200) - 80),
+          retweets: Math.max(0, hotspot.retweets + Math.floor(Math.random() * 100) - 40),
+          quotes: Math.max(0, hotspot.quotes + Math.floor(Math.random() * 40) - 15),
+          hashtags: Math.max(0, hotspot.hashtags + Math.floor(Math.random() * 60) - 25),
+        }))
+      );
     }, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  const getMaxValue = () => {
-    return Math.max(...regions.map(r => r[selectedMetric]));
-  };
+  const getMaxValue = () => Math.max(...hotspots.map(h => h[selectedMetric]));
 
-  const getIntensity = (value: number) => {
+  const getMarkerSize = (value: number) => {
     const max = getMaxValue();
-    return value / max;
+    const intensity = value / max;
+    return 4 + intensity * 16;
   };
 
-  const getColor = (intensity: number) => {
-    // X blue gradient based on intensity
-    if (intensity > 0.8) return '#1D9BF0';
-    if (intensity > 0.6) return '#3BABF2';
-    if (intensity > 0.4) return '#5BBBF4';
-    if (intensity > 0.2) return '#7BCBF6';
-    return '#9BDBF8';
+  const getMarkerOpacity = (value: number) => {
+    const max = getMaxValue();
+    return 0.4 + (value / max) * 0.6;
   };
 
   const getSentimentColor = (sentiment: number) => {
@@ -131,7 +147,7 @@ export default function GlobalHeatMap() {
 
       {/* Metric Selector */}
       <div className="flex gap-2 mb-6">
-        {metrics.map((metric) => (
+        {metrics.map(metric => (
           <button
             key={metric.key}
             onClick={() => setSelectedMetric(metric.key)}
@@ -147,196 +163,195 @@ export default function GlobalHeatMap() {
         ))}
       </div>
 
-      {/* World Map Container */}
-      <div className="relative w-full h-[400px] bg-x-black rounded-lg overflow-hidden border border-x-gray-border">
-        {/* Simplified SVG World Map */}
-        <svg
-          viewBox="0 0 100 60"
-          className="w-full h-full"
-          style={{ background: '#0F1419' }}
+      {/* Map Container */}
+      <div className="relative w-full h-[450px] rounded-lg overflow-hidden border border-x-gray-border">
+        <ComposableMap
+          projection="geoMercator"
+          projectionConfig={{
+            scale: 140,
+          }}
+          style={{
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#1D9BF0', // X blue for water
+          }}
         >
-          {/* Grid lines for reference */}
-          <defs>
-            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1D1F23" strokeWidth="0.2" />
-            </pattern>
-          </defs>
-          <rect width="100" height="60" fill="url(#grid)" />
+          <ZoomableGroup
+            zoom={position.zoom}
+            center={position.coordinates}
+            onMoveEnd={({ coordinates, zoom }) => setPosition({ coordinates: coordinates as [number, number], zoom })}
+          >
+            <Geographies geography={geoUrl}>
+              {({ geographies }) =>
+                geographies.map(geo => (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    fill="#2d5a47" // Light green for land
+                    stroke="#2F3336" // Border color
+                    strokeWidth={0.5}
+                    style={{
+                      default: { outline: 'none' },
+                      hover: { fill: '#3d7a5f', outline: 'none' },
+                      pressed: { outline: 'none' },
+                    }}
+                  />
+                ))
+              }
+            </Geographies>
 
-          {/* Simplified continent outlines */}
-          {/* North America */}
-          <path
-            d="M10,15 Q15,10 25,12 L30,18 Q32,25 28,32 L20,35 Q12,32 10,25 Z"
-            fill="#2F3336"
-            stroke="#3E4144"
-            strokeWidth="0.3"
-          />
-          {/* South America */}
-          <path
-            d="M22,38 Q28,36 32,42 L30,55 Q25,58 22,55 L20,45 Z"
-            fill="#2F3336"
-            stroke="#3E4144"
-            strokeWidth="0.3"
-          />
-          {/* Europe */}
-          <path
-            d="M45,15 Q52,12 58,15 L56,25 Q50,28 45,25 Z"
-            fill="#2F3336"
-            stroke="#3E4144"
-            strokeWidth="0.3"
-          />
-          {/* Africa */}
-          <path
-            d="M45,30 Q55,28 58,35 L55,50 Q48,55 45,50 L42,40 Z"
-            fill="#2F3336"
-            stroke="#3E4144"
-            strokeWidth="0.3"
-          />
-          {/* Asia */}
-          <path
-            d="M60,12 Q75,8 88,15 L90,30 Q85,38 75,40 L65,35 Q58,28 60,20 Z"
-            fill="#2F3336"
-            stroke="#3E4144"
-            strokeWidth="0.3"
-          />
-          {/* Oceania */}
-          <path
-            d="M78,45 Q85,42 90,48 L88,55 Q82,58 78,52 Z"
-            fill="#2F3336"
-            stroke="#3E4144"
-            strokeWidth="0.3"
-          />
-
-          {/* Heat map circles for each region */}
-          {regions.map((region) => {
-            const intensity = getIntensity(region[selectedMetric]);
-            const radius = 2 + intensity * 6;
-            return (
-              <g key={region.id}>
-                {/* Outer glow */}
-                <circle
-                  cx={region.coordinates.x}
-                  cy={region.coordinates.y}
-                  r={radius + 2}
-                  fill={getColor(intensity)}
-                  opacity={0.2}
-                  className="animate-pulse"
-                />
-                {/* Main circle */}
-                <circle
-                  cx={region.coordinates.x}
-                  cy={region.coordinates.y}
-                  r={radius}
-                  fill={getColor(intensity)}
-                  opacity={0.8}
-                  onMouseEnter={() => setHoveredRegion(region)}
-                  onMouseLeave={() => setHoveredRegion(null)}
-                  className="cursor-pointer transition-all hover:opacity-100"
-                  style={{ filter: `drop-shadow(0 0 ${intensity * 10}px ${getColor(intensity)})` }}
-                />
-                {/* Sentiment indicator dot */}
-                <circle
-                  cx={region.coordinates.x}
-                  cy={region.coordinates.y}
-                  r={1.5}
-                  fill={getSentimentColor(region.sentiment)}
-                />
-              </g>
-            );
-          })}
-        </svg>
+            {/* Hotspot Markers */}
+            {hotspots.map(hotspot => {
+              const size = getMarkerSize(hotspot[selectedMetric]);
+              const opacity = getMarkerOpacity(hotspot[selectedMetric]);
+              return (
+                <Marker
+                  key={hotspot.id}
+                  coordinates={hotspot.coordinates}
+                  onMouseEnter={() => setHoveredHotspot(hotspot)}
+                  onMouseLeave={() => setHoveredHotspot(null)}
+                >
+                  {/* Pulse animation ring */}
+                  <circle
+                    r={size + 4}
+                    fill="#1D9BF0"
+                    opacity={0.2}
+                    className="animate-ping"
+                    style={{ transformOrigin: 'center', animationDuration: '2s' }}
+                  />
+                  {/* Main marker */}
+                  <circle
+                    r={size}
+                    fill="#1D9BF0"
+                    opacity={opacity}
+                    stroke="#fff"
+                    strokeWidth={1}
+                    style={{
+                      cursor: 'pointer',
+                      filter: `drop-shadow(0 0 ${size}px rgba(29, 155, 240, 0.5))`,
+                    }}
+                  />
+                  {/* Sentiment indicator */}
+                  <circle
+                    r={3}
+                    fill={getSentimentColor(hotspot.sentiment)}
+                    stroke="#000"
+                    strokeWidth={0.5}
+                  />
+                </Marker>
+              );
+            })}
+          </ZoomableGroup>
+        </ComposableMap>
 
         {/* Hover Tooltip */}
-        {hoveredRegion && (
-          <div className="absolute top-4 right-4 p-4 bg-x-gray-dark border border-x-gray-border rounded-lg shadow-lg min-w-[200px]">
-            <h4 className="text-x-white font-semibold mb-3">{hoveredRegion.name}</h4>
+        {hoveredHotspot && (
+          <div className="absolute top-4 right-4 p-4 bg-x-gray-dark/95 border border-x-gray-border rounded-lg shadow-lg min-w-[220px] backdrop-blur-sm">
+            <h4 className="text-x-white font-semibold mb-3 flex items-center gap-2">
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: getSentimentColor(hoveredHotspot.sentiment) }}
+              />
+              {hoveredHotspot.name}
+            </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-x-gray-text">Tweets</span>
-                <span className="text-x-white font-medium">{formatNumber(hoveredRegion.tweets)}</span>
+                <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.tweets)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-x-gray-text">Retweets</span>
-                <span className="text-x-white font-medium">{formatNumber(hoveredRegion.retweets)}</span>
+                <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.retweets)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-x-gray-text">Quotes</span>
-                <span className="text-x-white font-medium">{formatNumber(hoveredRegion.quotes)}</span>
+                <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.quotes)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-x-gray-text">Hashtags</span>
-                <span className="text-x-white font-medium">{formatNumber(hoveredRegion.hashtags)}</span>
+                <span className="text-x-white font-medium">{formatNumber(hoveredHotspot.hashtags)}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-x-gray-border">
                 <span className="text-x-gray-text">Sentiment</span>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: getSentimentColor(hoveredRegion.sentiment) }}
-                  />
-                  <span className="text-x-white font-medium">
-                    {hoveredRegion.sentiment > 0 ? '+' : ''}{(hoveredRegion.sentiment * 100).toFixed(0)}%
-                  </span>
-                </div>
+                <span
+                  className="font-medium"
+                  style={{ color: getSentimentColor(hoveredHotspot.sentiment) }}
+                >
+                  {hoveredHotspot.sentiment > 0 ? '+' : ''}
+                  {(hoveredHotspot.sentiment * 100).toFixed(0)}%
+                </span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 p-3 bg-x-gray-dark/90 border border-x-gray-border rounded-lg">
-          <p className="text-xs text-x-gray-text mb-2">Engagement Intensity</p>
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: '#9BDBF8' }} />
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: '#7BCBF6' }} />
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: '#5BBBF4' }} />
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: '#3BABF2' }} />
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: '#1D9BF0' }} />
-          </div>
-          <div className="flex justify-between text-[10px] text-x-gray-text mt-1">
-            <span>Low</span>
-            <span>High</span>
-          </div>
+        {/* Zoom Controls */}
+        <div className="absolute bottom-4 left-4 flex flex-col gap-2">
+          <button
+            onClick={() => setPosition(prev => ({ ...prev, zoom: Math.min(prev.zoom * 1.5, 8) }))}
+            className="w-8 h-8 rounded bg-x-gray-dark/90 border border-x-gray-border text-x-white hover:bg-x-gray-light transition-colors flex items-center justify-center"
+          >
+            +
+          </button>
+          <button
+            onClick={() => setPosition(prev => ({ ...prev, zoom: Math.max(prev.zoom / 1.5, 1) }))}
+            className="w-8 h-8 rounded bg-x-gray-dark/90 border border-x-gray-border text-x-white hover:bg-x-gray-light transition-colors flex items-center justify-center"
+          >
+            -
+          </button>
+          <button
+            onClick={() => setPosition({ coordinates: [0, 20], zoom: 1 })}
+            className="w-8 h-8 rounded bg-x-gray-dark/90 border border-x-gray-border text-x-white hover:bg-x-gray-light transition-colors flex items-center justify-center text-xs"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </div>
 
-        {/* Sentiment Legend */}
-        <div className="absolute bottom-4 right-4 p-3 bg-x-gray-dark/90 border border-x-gray-border rounded-lg">
+        {/* Legend */}
+        <div className="absolute bottom-4 right-4 p-3 bg-x-gray-dark/90 border border-x-gray-border rounded-lg backdrop-blur-sm">
           <p className="text-xs text-x-gray-text mb-2">Sentiment</p>
-          <div className="flex items-center gap-2 text-[10px]">
-            <div className="flex items-center gap-1">
+          <div className="flex flex-col gap-1 text-[10px]">
+            <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-vital-healthy" />
-              <span className="text-x-gray-text">Positive</span>
+              <span className="text-x-gray-text">Positive (&gt;30%)</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-pulse-blue" />
               <span className="text-x-gray-text">Neutral</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-vital-warning" />
+              <span className="text-x-gray-text">Mixed</span>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-vital-critical" />
-              <span className="text-x-gray-text">Negative</span>
+              <span className="text-x-gray-text">Negative (&lt;-30%)</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Region Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
-        {regions.map((region) => (
+      {/* Hotspot Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-6">
+        {hotspots.slice(0, 6).map(hotspot => (
           <div
-            key={region.id}
+            key={hotspot.id}
             className="p-3 rounded-lg bg-x-gray-light border border-x-gray-border hover:border-x-blue transition-colors cursor-pointer"
-            onMouseEnter={() => setHoveredRegion(region)}
-            onMouseLeave={() => setHoveredRegion(null)}
+            onMouseEnter={() => setHoveredHotspot(hotspot)}
+            onMouseLeave={() => setHoveredHotspot(null)}
           >
-            <p className="text-x-gray-text text-xs truncate">{region.name}</p>
-            <p className="text-x-white font-bold text-lg">{formatNumber(region[selectedMetric])}</p>
+            <p className="text-x-gray-text text-xs truncate">{hotspot.name}</p>
+            <p className="text-x-white font-bold text-lg">{formatNumber(hotspot[selectedMetric])}</p>
             <div className="flex items-center gap-1 mt-1">
               <div
                 className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: getSentimentColor(region.sentiment) }}
+                style={{ backgroundColor: getSentimentColor(hotspot.sentiment) }}
               />
               <span className="text-[10px] text-x-gray-text">
-                {region.sentiment > 0 ? '+' : ''}{(region.sentiment * 100).toFixed(0)}%
+                {hotspot.sentiment > 0 ? '+' : ''}
+                {(hotspot.sentiment * 100).toFixed(0)}%
               </span>
             </div>
           </div>
@@ -344,4 +359,6 @@ export default function GlobalHeatMap() {
       </div>
     </div>
   );
-}
+};
+
+export default memo(GlobalHeatMap);

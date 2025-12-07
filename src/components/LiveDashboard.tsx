@@ -35,7 +35,7 @@ export default function LiveDashboard() {
   });
   const [recentTweets, setRecentTweets] = useState<Tweet[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [lastUpdate, setLastUpdate] = useState<string>('--:--:--');
 
   useEffect(() => {
     // Connect to backend WebSocket
@@ -55,7 +55,7 @@ export default function LiveDashboard() {
 
     socketInstance.on('metrics:update', (data: Metrics) => {
       setMetrics(data);
-      setLastUpdate(new Date());
+      setLastUpdate(new Date().toLocaleTimeString());
     });
 
     socketInstance.on('tweet:new', (tweet: Tweet) => {
@@ -105,7 +105,7 @@ export default function LiveDashboard() {
               <span className="text-sm text-x-gray-text">{isConnected ? 'Live' : 'Offline'}</span>
             </div>
             <span className="text-x-gray-text text-sm">
-              Last updated: <span className="text-x-white">{lastUpdate.toLocaleTimeString()}</span>
+              Last updated: <span className="text-x-white">{lastUpdate}</span>
             </span>
           </div>
         </div>
