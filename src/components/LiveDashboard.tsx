@@ -1,5 +1,5 @@
 'use client';
-
+// Force rebuild with production URL - v2
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import VitalCard from '@/components/VitalCard';
